@@ -21,6 +21,7 @@ import Soins from "./pages/Soins";
 import Inventaire from "./pages/Inventaire";
 import Invoices from "./pages/Invoices";
 import Payments from "./pages/Payments";
+import Workflows from "./pages/Workflows";
 import Biohacking from "./pages/Biohacking";
 import Metrics from "./pages/Metrics";
 import Reports from "./pages/Reports";
@@ -163,6 +164,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Payments />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/workflows"
+        element={
+          <ProtectedRoute>
+            <Workflows />
           </ProtectedRoute>
         }
       />

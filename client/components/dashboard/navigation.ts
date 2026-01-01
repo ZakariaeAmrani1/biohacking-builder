@@ -12,6 +12,7 @@ import {
   DollarSign,
   TrendingUp,
   Warehouse,
+  GitBranch,
 } from "lucide-react";
 
 export interface NavChildItem {
@@ -47,6 +48,7 @@ export const navigation: NavItem[] = [
   },
   { name: "Factures", href: "/invoices", icon: Receipt },
   { name: "Paiements", href: "/payments", icon: DollarSign },
+  { name: "Gestion des Flux", href: "/workflows", icon: GitBranch },
   { name: "Rapports", href: "/reports", icon: TrendingUp },
   { name: "Paramètres", href: "/settings", icon: Settings },
 ];

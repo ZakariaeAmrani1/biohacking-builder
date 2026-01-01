@@ -185,6 +185,10 @@ export default function Workflow() {
   const [workflows, setWorkflows] = useState<WorkflowRecord[]>([]);
   const [workflowDrafts, setWorkflowDrafts] = useState<WorkflowDraft[]>([]);
   const [currentDraft, setCurrentDraft] = useState<WorkflowDraft | null>(null);
+  const [showWorkflowDetailsModal, setShowWorkflowDetailsModal] =
+    useState(false);
+  const [selectedWorkflowDetails, setSelectedWorkflowDetails] =
+    useState<WorkflowRecord | null>(null);
 
   // Search and filter states
   const [searchTerm, setSearchTerm] = useState("");

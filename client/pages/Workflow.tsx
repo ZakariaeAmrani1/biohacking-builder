@@ -381,6 +381,46 @@ export default function Workflow() {
     };
   };
 
+  const handleViewWorkflow = (workflow: WorkflowRecord) => {
+    setSelectedWorkflowDetails(workflow);
+    setShowWorkflowDetailsModal(true);
+  };
+
+  const handleDeleteWorkflow = async (workflow: WorkflowRecord) => {
+    const confirmed = window.confirm(
+      `Êtes-vous sûr de vouloir supprimer le flux pour ${workflow.client.prenom} ${workflow.client.nom}? Cette action supprimera le rendez-vous et la facture.`,
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setIsLoading(true);
+      // Delete the appointment and invoice
+      if (workflow.appointment.id) {
+        await AppointmentsService.delete(workflow.appointment.id);
+      }
+      if (workflow.invoice.id) {
+        await InvoicesService.delete(workflow.invoice.id);
+      }
+
+      toast({
+        title: "Succès",
+        description: `Le flux pour ${workflow.client.prenom} ${workflow.client.nom} a été supprimé.`,
+      });
+
+      await loadInitialData();
+    } catch (error) {
+      console.error("Error deleting workflow:", error);
+      toast({
+        title: "Erreur",
+        description: "Échec de la suppression du flux. Veuillez réessayer.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const saveDraft = (draft: WorkflowDraft) => {
     const existingIndex = workflowDrafts.findIndex((d) => d.id === draft.id);
     if (existingIndex >= 0) {

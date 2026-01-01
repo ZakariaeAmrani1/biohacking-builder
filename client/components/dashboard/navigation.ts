@@ -31,6 +31,7 @@ export interface NavItem {
 
 export const navigation: NavItem[] = [
   { name: "Tableau de Bord", href: "/", icon: Home },
+  { name: "Flux Complet", href: "/workflow", icon: GitBranch },
   { name: "Rendez-vous", href: "/appointments", icon: Calendar },
   { name: "Patients", href: "/patients", icon: Users },
   { name: "Employés", href: "/employees", icon: Users },

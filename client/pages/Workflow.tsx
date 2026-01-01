@@ -130,7 +130,13 @@ interface WorkflowRecord {
 
 interface WorkflowDraft {
   id?: string;
-  stage: "client" | "appointment" | "products" | "invoice" | "payment" | "completed";
+  stage:
+    | "client"
+    | "appointment"
+    | "products"
+    | "invoice"
+    | "payment"
+    | "completed";
   clientId?: number;
   appointmentId?: number;
   invoiceId?: number;
@@ -508,9 +514,8 @@ export default function Workflow() {
           Cabinet: formData.appointmentCabinet,
           soin_id: parseInt(formData.appointmentSoinId),
         };
-        const newAppointment = await AppointmentsService.create(
-          appointmentData,
-        );
+        const newAppointment =
+          await AppointmentsService.create(appointmentData);
         draftData.appointmentId = newAppointment.id;
       } else if (stepToSave === "products") {
         // Ensure client and appointment exist, then save as draft with products
@@ -554,9 +559,8 @@ export default function Workflow() {
             Cabinet: formData.appointmentCabinet,
             soin_id: parseInt(formData.appointmentSoinId),
           };
-          const newAppointment = await AppointmentsService.create(
-            appointmentData,
-          );
+          const newAppointment =
+            await AppointmentsService.create(appointmentData);
           draftData.appointmentId = newAppointment.id;
         } else {
           draftData.appointmentId = currentDraft.appointmentId;
@@ -603,9 +607,8 @@ export default function Workflow() {
             Cabinet: formData.appointmentCabinet,
             soin_id: parseInt(formData.appointmentSoinId),
           };
-          const newAppointment = await AppointmentsService.create(
-            appointmentData,
-          );
+          const newAppointment =
+            await AppointmentsService.create(appointmentData);
           draftData.appointmentId = newAppointment.id;
         } else {
           draftData.appointmentId = currentDraft.appointmentId;
@@ -666,9 +669,8 @@ export default function Workflow() {
             Cabinet: formData.appointmentCabinet,
             soin_id: parseInt(formData.appointmentSoinId),
           };
-          const newAppointment = await AppointmentsService.create(
-            appointmentData,
-          );
+          const newAppointment =
+            await AppointmentsService.create(appointmentData);
           draftData.appointmentId = newAppointment.id;
         } else {
           draftData.appointmentId = currentDraft.appointmentId;
@@ -1309,13 +1311,19 @@ export default function Workflow() {
                   <div className="flex justify-between">
                     <p className="text-muted-foreground">Statut Facture</p>
                     <Badge>
-                      {paymentStatusLabels[selectedWorkflowDetails.invoice.statut]}
+                      {
+                        paymentStatusLabels[
+                          selectedWorkflowDetails.invoice.statut
+                        ]
+                      }
                     </Badge>
                   </div>
                   {selectedWorkflowDetails.invoice.items &&
                     selectedWorkflowDetails.invoice.items.length > 0 && (
                       <div className="mt-4 pt-4 border-t border-border">
-                        <p className="font-semibold mb-2">Produits & Services</p>
+                        <p className="font-semibold mb-2">
+                          Produits & Services
+                        </p>
                         <div className="space-y-2">
                           {selectedWorkflowDetails.invoice.items.map(
                             (item, idx) => (
@@ -1325,9 +1333,9 @@ export default function Workflow() {
                                 </span>
                                 <span className="font-medium">
                                   €
-                                  {(
-                                    item.quantite * item.prix_unitaire
-                                  ).toFixed(2)}
+                                  {(item.quantite * item.prix_unitaire).toFixed(
+                                    2,
+                                  )}
                                 </span>
                               </div>
                             ),
@@ -1693,7 +1701,9 @@ export default function Workflow() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div>
-                        <FormLabel className="mb-3 block">Date et Heure</FormLabel>
+                        <FormLabel className="mb-3 block">
+                          Date et Heure
+                        </FormLabel>
                         <TimeSlotPicker
                           value={form.getValues("appointmentDate")}
                           onChange={(datetime) =>
@@ -2109,7 +2119,9 @@ export default function Workflow() {
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
+                      onClick={() =>
+                        setCurrentStep(Math.max(1, currentStep - 1))
+                      }
                       disabled={currentStep === 1}
                     >
                       <ChevronLeft className="w-4 h-4 mr-2" /> Retour
@@ -2155,7 +2167,9 @@ export default function Workflow() {
                         4: "invoice" as const,
                         5: "payment" as const,
                       };
-                      saveAndQuitStep(stageMap[currentStep as keyof typeof stageMap]);
+                      saveAndQuitStep(
+                        stageMap[currentStep as keyof typeof stageMap],
+                      );
                     }}
                     disabled={isLoading}
                     className="w-full"
@@ -2167,7 +2181,8 @@ export default function Workflow() {
                       </>
                     ) : (
                       <>
-                        <Check className="w-4 h-4 mr-2" /> Enregistrer et Quitter
+                        <Check className="w-4 h-4 mr-2" /> Enregistrer et
+                        Quitter
                       </>
                     )}
                   </Button>

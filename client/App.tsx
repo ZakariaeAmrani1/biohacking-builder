@@ -168,6 +168,14 @@ const AppRoutes = () => {
         }
       />
       <Route
+        path="/workflows"
+        element={
+          <ProtectedRoute>
+            <Workflows />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/document-types"
         element={
           <ProtectedRoute>

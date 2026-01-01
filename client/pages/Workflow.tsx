@@ -998,6 +998,7 @@ export default function Workflow() {
                   <TableHead>Client</TableHead>
                   <TableHead>Date RDV</TableHead>
                   <TableHead>Statut RDV</TableHead>
+                  <TableHead>Progression</TableHead>
                   <TableHead>Produits</TableHead>
                   <TableHead>Montant Total</TableHead>
                   <TableHead>Méthode Paiement</TableHead>

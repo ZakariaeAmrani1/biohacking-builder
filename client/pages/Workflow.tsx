@@ -678,66 +678,21 @@ export default function Workflow() {
   const onSubmit = async (data: WorkflowFormData) => {
     try {
       setIsLoading(true);
-      const currentUser = AuthService.getCurrentUser();
-
-      // Step 1: Create or use existing client
-      let clientId: number;
-      if (data.isNewClient) {
-        const clientData: ClientFormData = {
-          CIN: data.clientCIN,
-          nom: data.clientNom,
-          prenom: data.clientPrenom,
-          date_naissance: data.clientDateNaissance,
-          adresse: data.clientAdresse,
-          numero_telephone: data.clientTelephone,
-          email: data.clientEmail,
-          groupe_sanguin: data.clientGroupSanguin,
-          antecedents: data.clientAntecedents,
-          allergies: data.clientAllergies,
-          commentaire: "",
-          Cree_par: currentUser.CIN,
+      await saveAndQuitStep("payment");
+      // Update draft to mark as completed
+      if (currentDraft) {
+        const completedDraft: WorkflowDraft = {
+          ...currentDraft,
+          stage: "completed",
+          updatedAt: new Date().toISOString(),
         };
-        const newClient = await ClientsService.create(clientData);
-        clientId = newClient.id;
-      } else {
-        clientId = data.selectedClientId!;
+        saveDraft(completedDraft);
       }
-
-      // Step 2: Create appointment
-      const appointmentData: AppointmentFormData = {
-        client_id: clientId,
-        CIN: data.clientCIN,
-        sujet: data.appointmentSubject,
-        date_rendez_vous: new Date(data.appointmentDate).toISOString(),
-        Cree_par: currentUser.CIN,
-        status: data.appointmentStatus,
-        Cabinet: data.appointmentCabinet,
-        soin_id: parseInt(data.appointmentSoinId),
-      };
-      const newAppointment = await AppointmentsService.create(appointmentData);
-
-      // Step 4: Create invoice
-      const invoiceData: FactureFormData = {
-        CIN: data.clientCIN,
-        date: new Date(data.invoiceDate).toISOString(),
-        statut: data.invoiceStatut,
-        notes: data.invoiceNotes,
-        Cree_par: currentUser.CIN,
-        items: data.invoiceItems,
-        date_paiement: data.paymentMethod
-          ? new Date(data.paymentDate).toISOString()
-          : undefined,
-        methode_paiement: data.paymentMethod,
-        cheque_numero: data.chequeNumero,
-        cheque_banque: data.chequeBanque,
-        cheque_date_tirage: data.chequeDateTirage,
-      };
-      const newInvoice = await InvoicesService.create(invoiceData);
 
       toast({
         title: "Succès",
         description:
-          "Flux de travail complété avec succès ! Client, rendez-vous et facture créés.",
+          "Flux de travail finalisé avec succès ! Client, rendez-vous et facture créés.",
       });
 
       // Reload data
@@ -746,6 +701,7 @@ export default function Workflow() {
       // Reset form
       form.reset();
       setCurrentStep(1);
+      setCurrentDraft(null);
       setIsDrawerOpen(false);
     } catch (error) {
       console.error("Error submitting workflow:", error);

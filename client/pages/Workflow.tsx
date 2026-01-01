@@ -130,18 +130,15 @@ export default function Workflow() {
   const loadInitialData = async () => {
     try {
       setIsLoading(true);
-      const [clientsData, soinsData, productsData, employeesData] =
-        await Promise.all([
-          ClientsService.getAll(),
-          SoinsService.getAll(),
-          ProductsService.getAll(),
-          UserService.getAll(),
-        ]);
+      const [clientsData, soinsData, productsData] = await Promise.all([
+        ClientsService.getAll(),
+        SoinsService.getAll(),
+        ProductsService.getAll(),
+      ]);
 
       setClients(clientsData);
       setSoins(soinsData);
       setProducts(productsData);
-      setEmployees(employeesData);
     } catch (error) {
       console.error("Error loading data:", error);
       toast({

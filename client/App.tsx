@@ -26,7 +26,6 @@ import Metrics from "./pages/Metrics";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import DocumentTypes from "./pages/DocumentTypes";
-import Workflow from "./pages/Workflow";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
@@ -204,14 +203,6 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Settings />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/workflow"
-        element={
-          <ProtectedRoute>
-            <Workflow />
           </ProtectedRoute>
         }
       />

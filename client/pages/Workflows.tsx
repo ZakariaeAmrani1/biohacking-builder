@@ -454,6 +454,7 @@ export default function Workflows() {
         onClose={handleCloseModal}
         onSubmit={handleFormSubmit}
         workflow={editingWorkflow || undefined}
+        initialStep={initialStep}
       />
 
       {/* Delete Confirmation */}

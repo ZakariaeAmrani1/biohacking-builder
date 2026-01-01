@@ -299,6 +299,8 @@ export default function WorkflowFormModal({
         appointmentFormData,
       );
 
+      setCreatedAppointmentId(appointment.id);
+
       setInvoiceFormData((prev) => ({
         ...prev,
         CIN: appointmentFormData.CIN,

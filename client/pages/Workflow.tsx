@@ -1054,6 +1054,11 @@ export default function Workflow() {
                         </Badge>
                       </TableCell>
                       <TableCell>
+                        <Badge className="bg-green-100 text-green-800 border-green-200">
+                          ✓ Complété
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
                         <Button
                           type="button"
                           variant="ghost"

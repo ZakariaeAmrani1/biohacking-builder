@@ -1613,6 +1613,49 @@ export default function Workflow() {
   );
 }
 
+// Helper Component for Client Type Selection
+function ClientTypeSelector({
+  form,
+}: {
+  form: any;
+}) {
+  const isNewClient = form.watch("isNewClient");
+
+  return (
+    <div className="space-y-4">
+      <Label className="text-base font-semibold">Type de Client</Label>
+      <div className="flex gap-4">
+        <Button
+          type="button"
+          variant={isNewClient ? "default" : "outline"}
+          onClick={() => {
+            form.setValue("isNewClient", true);
+            form.setValue("selectedClientId", undefined);
+          }}
+          className="flex-1"
+        >
+          <Plus className="w-4 h-4 mr-2" /> Nouveau Client
+        </Button>
+        <Button
+          type="button"
+          variant={!isNewClient ? "default" : "outline"}
+          onClick={() => {
+            form.setValue("isNewClient", false);
+            form.setValue("clientCIN", "");
+            form.setValue("clientNom", "");
+            form.setValue("clientPrenom", "");
+            form.setValue("clientEmail", "");
+            form.setValue("clientTelephone", "");
+          }}
+          className="flex-1"
+        >
+          Client Existant
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // Helper Component for Product/Service Selection
 function ProductItemSelector({
   products,

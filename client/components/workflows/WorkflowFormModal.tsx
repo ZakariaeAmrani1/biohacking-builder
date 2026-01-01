@@ -126,6 +126,9 @@ export default function WorkflowFormModal({
 
   const [invoiceItems, setInvoiceItems] = useState<FactureItem[]>([]);
 
+  // Track created appointment ID to avoid duplicates
+  const [createdAppointmentId, setCreatedAppointmentId] = useState<number | null>(null);
+
   // Load initial data
   useEffect(() => {
     if (isOpen) {

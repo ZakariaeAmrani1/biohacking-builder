@@ -128,6 +128,17 @@ interface WorkflowRecord {
   client: Client;
 }
 
+interface WorkflowDraft {
+  id?: string;
+  stage: "client" | "appointment" | "products" | "invoice" | "payment" | "completed";
+  clientId?: number;
+  appointmentId?: number;
+  invoiceId?: number;
+  formData: Partial<WorkflowFormData>;
+  createdAt: string;
+  updatedAt: string;
+}
+
 const STEPS = [
   { id: 1, label: "Client", description: "Sélectionner ou créer un client" },
   { id: 2, label: "Rendez-vous", description: "Créer un rendez-vous" },

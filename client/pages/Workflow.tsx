@@ -940,9 +940,79 @@ export default function Workflow() {
           </CardContent>
         </Card>
 
+        {/* Draft Workflows Section */}
+        {workflowDrafts.length > 0 && (
+          <Card className="bg-amber-50 border-amber-200">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-amber-600" />
+                Flux en cours ({workflowDrafts.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {workflowDrafts.map((draft) => {
+                  const stageLabels: Record<string, string> = {
+                    client: "Client sélectionné",
+                    appointment: "Rendez-vous créé",
+                    products: "Produits sélectionnés",
+                    invoice: "Facture créée",
+                    payment: "Paiement en attente",
+                    completed: "Complété",
+                  };
+                  return (
+                    <div
+                      key={draft.id}
+                      className="p-4 border border-amber-200 rounded-lg bg-white hover:bg-amber-50 transition-colors"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-semibold">
+                            {draft.formData.clientNom}{" "}
+                            {draft.formData.clientPrenom}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Étape: {stageLabels[draft.stage]}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Modifié:{" "}
+                            {new Date(draft.updatedAt).toLocaleDateString(
+                              "fr-FR",
+                            )}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setCurrentDraft(draft);
+                            form.reset(draft.formData as any);
+                            setCurrentStep(
+                              {
+                                client: 1,
+                                appointment: 2,
+                                products: 3,
+                                invoice: 4,
+                                payment: 5,
+                                completed: 5,
+                              }[draft.stage],
+                            );
+                            setIsDrawerOpen(true);
+                          }}
+                        >
+                          Continuer
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Results Count */}
         <div className="text-sm text-muted-foreground">
-          {filteredWorkflows.length} enregistrement(s) trouvé(s)
+          {filteredWorkflows.length} flux complété(s) trouvé(s)
         </div>
 
         {/* Table */}

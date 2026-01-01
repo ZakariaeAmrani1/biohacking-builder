@@ -118,12 +118,14 @@ export default function WorkflowFormModal({
   const [isClientSelectorOpen, setIsClientSelectorOpen] = useState(false);
   const [clientSearchQuery, setClientSearchQuery] = useState("");
 
-  const [newPatientData, setNewPatientData] = useState<Partial<ClientFormData>>({
-    nom: "",
-    prenom: "",
-    CIN: "",
-    numero_telephone: "",
-  });
+  const [newPatientData, setNewPatientData] = useState<Partial<ClientFormData>>(
+    {
+      nom: "",
+      prenom: "",
+      CIN: "",
+      numero_telephone: "",
+    },
+  );
 
   // Step 2: Appointment
   const [appointmentFormData, setAppointmentFormData] =
@@ -139,12 +141,13 @@ export default function WorkflowFormModal({
     });
 
   const [appointmentTypes, setAppointmentTypes] = useState<string[]>([]);
-  const [createdAppointmentId, setCreatedAppointmentId] = useState<number | null>(null);
+  const [createdAppointmentId, setCreatedAppointmentId] = useState<
+    number | null
+  >(null);
 
   // Step 3: Invoice
-  const [invoiceFormData, setInvoiceFormData] = useState<FactureFormData>(
-    createEmptyFacture(),
-  );
+  const [invoiceFormData, setInvoiceFormData] =
+    useState<FactureFormData>(createEmptyFacture());
   const [invoiceItems, setInvoiceItems] = useState<FactureItem[]>([]);
 
   // Load data on modal open
@@ -438,7 +441,8 @@ export default function WorkflowFormModal({
 
       let appointmentId = createdAppointmentId;
       if (!appointmentId) {
-        const appointment = await AppointmentsService.create(appointmentFormData);
+        const appointment =
+          await AppointmentsService.create(appointmentFormData);
         appointmentId = appointment.id;
       }
 
@@ -584,9 +588,7 @@ export default function WorkflowFormModal({
                             ans • {client.email}
                           </div>
                         </div>
-                        <Badge variant="outline">
-                          {client.groupe_sanguin}
-                        </Badge>
+                        <Badge variant="outline">{client.groupe_sanguin}</Badge>
                       </CommandItem>
                     ))}
                   </CommandGroup>
@@ -704,8 +706,8 @@ export default function WorkflowFormModal({
               </div>
 
               <div className="text-xs text-muted-foreground">
-                * Champs obligatoires. Le patient sera créé avec ces informations
-                de base.
+                * Champs obligatoires. Le patient sera créé avec ces
+                informations de base.
               </div>
 
               <Button
@@ -806,7 +808,11 @@ export default function WorkflowFormModal({
           Soin/Service *
         </Label>
         <Select
-          value={appointmentFormData.soin_id ? String(appointmentFormData.soin_id) : ""}
+          value={
+            appointmentFormData.soin_id
+              ? String(appointmentFormData.soin_id)
+              : ""
+          }
           onValueChange={(value) =>
             handleAppointmentChange("soin_id", parseInt(value))
           }
@@ -931,7 +937,10 @@ export default function WorkflowFormModal({
                             </SelectTrigger>
                             <SelectContent>
                               {products.map((product) => (
-                                <SelectItem key={product.id} value={String(product.id)}>
+                                <SelectItem
+                                  key={product.id}
+                                  value={String(product.id)}
+                                >
                                   {product.Nom} - {product.prix}DH
                                 </SelectItem>
                               ))}
@@ -1006,9 +1015,7 @@ export default function WorkflowFormModal({
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">
-                      TVA (20%):
-                    </span>
+                    <span className="text-muted-foreground">TVA (20%):</span>
                     <span className="font-medium">
                       {totals.tva_amount.toFixed(2)} DH
                     </span>
@@ -1027,10 +1034,7 @@ export default function WorkflowFormModal({
         )}
 
         <div className="space-y-2">
-          <Label
-            htmlFor="payment-method"
-            className="flex items-center gap-2"
-          >
+          <Label htmlFor="payment-method" className="flex items-center gap-2">
             <Receipt className="h-4 w-4" />
             Méthode de Paiement
           </Label>

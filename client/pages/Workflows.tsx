@@ -61,7 +61,8 @@ export default function Workflows() {
 
   // Modal states
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
-  const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowWithDetails | null>(null);
+  const [selectedWorkflow, setSelectedWorkflow] =
+    useState<WorkflowWithDetails | null>(null);
   const [editingWorkflow, setEditingWorkflow] = useState<Workflow | null>(null);
   const [initialStep, setInitialStep] = useState<1 | 2 | 3>(1);
   const [deleteConfirm, setDeleteConfirm] = useState<Workflow | null>(null);
@@ -225,9 +226,7 @@ export default function Workflows() {
                     ? `${workflow.totalAmount.toFixed(2)} DH`
                     : "-"}
                 </TableCell>
-                <TableCell>
-                  {workflow.paymentMethod || "-"}
-                </TableCell>
+                <TableCell>{workflow.paymentMethod || "-"}</TableCell>
                 <TableCell className="text-sm text-gray-600">
                   {workflow.Cree_par}
                 </TableCell>
@@ -472,7 +471,8 @@ export default function Workflows() {
             <CardContent className="space-y-4 pt-6">
               <Alert variant="destructive">
                 <AlertDescription>
-                  Cette action est irréversible. Le flux et toutes ses données associées seront supprimés.
+                  Cette action est irréversible. Le flux et toutes ses données
+                  associées seront supprimés.
                 </AlertDescription>
               </Alert>
               <p className="text-sm text-gray-600">

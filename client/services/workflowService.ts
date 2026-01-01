@@ -277,7 +277,9 @@ export class WorkflowService {
   }
 
   // Get workflows by status
-  static async getByStatus(status: "En cours" | "Terminé"): Promise<Workflow[]> {
+  static async getByStatus(
+    status: "En cours" | "Terminé",
+  ): Promise<Workflow[]> {
     return mockWorkflows.filter((workflow) => workflow.status === status);
   }
 }

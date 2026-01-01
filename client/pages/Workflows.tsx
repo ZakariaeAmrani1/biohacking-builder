@@ -457,19 +457,26 @@ export default function Workflows() {
         initialStep={initialStep}
       />
 
-      {/* Delete Confirmation */}
+      {/* Delete Confirmation Modal */}
       {deleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <Card className="w-96">
-            <CardHeader>
-              <CardTitle>Confirmer la Suppression</CardTitle>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-in fade-in duration-200">
+          <Card className="w-96 shadow-lg border-red-100">
+            <CardHeader className="border-b border-red-100 bg-red-50">
+              <CardTitle className="flex items-center gap-2 text-red-700">
+                <Trash2 className="h-5 w-5" />
+                Supprimer le Flux
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-gray-600">
-                Êtes-vous sûr de vouloir supprimer ce flux ? Cette action ne peut
-                pas être annulée.
+            <CardContent className="space-y-4 pt-6">
+              <Alert variant="destructive">
+                <AlertDescription>
+                  Cette action est irréversible. Le flux et toutes ses données associées seront supprimés.
+                </AlertDescription>
+              </Alert>
+              <p className="text-sm text-gray-600">
+                Êtes-vous sûr de vouloir supprimer ce flux ?
               </p>
-              <div className="flex gap-2 justify-end">
+              <div className="flex gap-2 justify-end pt-2">
                 <Button
                   variant="outline"
                   onClick={() => setDeleteConfirm(null)}
@@ -480,6 +487,7 @@ export default function Workflows() {
                   variant="destructive"
                   onClick={() => handleDeleteWorkflow(deleteConfirm)}
                 >
+                  <Trash2 className="h-4 w-4 mr-2" />
                   Supprimer
                 </Button>
               </div>

@@ -183,6 +183,8 @@ export default function Workflow() {
   const [isLoading, setIsLoading] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [workflows, setWorkflows] = useState<WorkflowRecord[]>([]);
+  const [workflowDrafts, setWorkflowDrafts] = useState<WorkflowDraft[]>([]);
+  const [currentDraft, setCurrentDraft] = useState<WorkflowDraft | null>(null);
 
   // Search and filter states
   const [searchTerm, setSearchTerm] = useState("");

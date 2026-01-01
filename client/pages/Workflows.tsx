@@ -133,11 +133,12 @@ export default function Workflows() {
       Cree_par: workflow.Cree_par,
     });
     setSelectedWorkflow(workflow);
-    
+
     // Determine which step to open based on workflow status
     // If "En cours" (no invoice), open at step 3 to add invoice
     // If "Terminé" (has invoice), open at step 1 to allow full edit
-    const initialStep = workflow.status === "En cours" ? 3 : 1;
+    const step = workflow.status === "En cours" ? 3 : 1;
+    setInitialStep(step as 1 | 2 | 3);
     setIsFormModalOpen(true);
   };
 

@@ -194,13 +194,42 @@ export default function Workflow() {
 
   const form = useForm<WorkflowFormData>({
     defaultValues: {
-      isNewClient: true,
-      appointmentStatus: "programmé",
-      invoiceStatut: FactureStatut.BROUILLON,
-      invoiceItems: [],
-      paymentAmount: 0,
-      paymentMethod: "cash",
+      // Client fields
+      selectedClientId: undefined,
+      clientCIN: "",
+      clientNom: "",
+      clientPrenom: "",
+      clientDateNaissance: "",
+      clientAdresse: "",
+      clientTelephone: "",
+      clientEmail: "",
       clientGroupSanguin: "O+",
+      clientAntecedents: "",
+      clientAllergies: "",
+      isNewClient: true,
+
+      // Appointment fields
+      appointmentDate: "",
+      appointmentSubject: "",
+      appointmentCabinet: "",
+      appointmentSoinId: "",
+      appointmentStatus: "programmé",
+
+      // Products/Services
+      invoiceItems: [],
+
+      // Invoice fields
+      invoiceDate: "",
+      invoiceNotes: "",
+      invoiceStatut: FactureStatut.BROUILLON,
+
+      // Payment fields
+      paymentDate: "",
+      paymentMethod: "cash",
+      paymentAmount: 0,
+      chequeNumero: "",
+      chequeBanque: "",
+      chequeDateTirage: "",
     },
   });
 

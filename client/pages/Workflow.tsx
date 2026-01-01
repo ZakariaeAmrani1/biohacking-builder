@@ -934,47 +934,7 @@ export default function Workflow() {
                       <CardTitle>Informations du Client</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                      <div className="space-y-4">
-                        <Label className="text-base font-semibold">
-                          Type de Client
-                        </Label>
-                        <div className="flex gap-4">
-                          <Button
-                            type="button"
-                            variant={
-                              form.getValues("isNewClient")
-                                ? "default"
-                                : "outline"
-                            }
-                            onClick={() => {
-                              form.setValue("isNewClient", true);
-                              form.setValue("selectedClientId", undefined);
-                            }}
-                            className="flex-1"
-                          >
-                            <Plus className="w-4 h-4 mr-2" /> Nouveau Client
-                          </Button>
-                          <Button
-                            type="button"
-                            variant={
-                              !form.getValues("isNewClient")
-                                ? "default"
-                                : "outline"
-                            }
-                            onClick={() => {
-                              form.setValue("isNewClient", false);
-                              form.setValue("clientCIN", "");
-                              form.setValue("clientNom", "");
-                              form.setValue("clientPrenom", "");
-                              form.setValue("clientEmail", "");
-                              form.setValue("clientTelephone", "");
-                            }}
-                            className="flex-1"
-                          >
-                            Client Existant
-                          </Button>
-                        </div>
-                      </div>
+                      <ClientTypeSelector form={form} />
 
                       {form.getValues("isNewClient") ? (
                         <div className="grid grid-cols-2 gap-4">

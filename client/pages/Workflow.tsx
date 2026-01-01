@@ -377,6 +377,304 @@ export default function Workflow() {
     };
   };
 
+  const saveDraft = (draft: WorkflowDraft) => {
+    const existingIndex = workflowDrafts.findIndex((d) => d.id === draft.id);
+    if (existingIndex >= 0) {
+      const updated = [...workflowDrafts];
+      updated[existingIndex] = draft;
+      setWorkflowDrafts(updated);
+    } else {
+      setWorkflowDrafts([...workflowDrafts, draft]);
+    }
+    setCurrentDraft(draft);
+  };
+
+  const saveAndQuitStep = async (stepToSave: WorkflowDraft["stage"]) => {
+    try {
+      setIsLoading(true);
+      const currentUser = AuthService.getCurrentUser();
+      const formData = form.getValues();
+      let draftData: WorkflowDraft = {
+        id: currentDraft?.id || `draft-${Date.now()}`,
+        stage: stepToSave,
+        formData,
+        createdAt: currentDraft?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      if (stepToSave === "client") {
+        // Just save client info
+        let clientId: number;
+        if (formData.isNewClient) {
+          const clientData: ClientFormData = {
+            CIN: formData.clientCIN,
+            nom: formData.clientNom,
+            prenom: formData.clientPrenom,
+            date_naissance: formData.clientDateNaissance,
+            adresse: formData.clientAdresse,
+            numero_telephone: formData.clientTelephone,
+            email: formData.clientEmail,
+            groupe_sanguin: formData.clientGroupSanguin,
+            antecedents: formData.clientAntecedents,
+            allergies: formData.clientAllergies,
+            commentaire: "",
+            Cree_par: currentUser.CIN,
+          };
+          const newClient = await ClientsService.create(clientData);
+          clientId = newClient.id;
+          draftData.clientId = newClient.id;
+        } else {
+          clientId = formData.selectedClientId!;
+          draftData.clientId = clientId;
+        }
+      } else if (stepToSave === "appointment") {
+        // Save client first if needed, then appointment
+        let clientId: number;
+        if (formData.isNewClient) {
+          const clientData: ClientFormData = {
+            CIN: formData.clientCIN,
+            nom: formData.clientNom,
+            prenom: formData.clientPrenom,
+            date_naissance: formData.clientDateNaissance,
+            adresse: formData.clientAdresse,
+            numero_telephone: formData.clientTelephone,
+            email: formData.clientEmail,
+            groupe_sanguin: formData.clientGroupSanguin,
+            antecedents: formData.clientAntecedents,
+            allergies: formData.clientAllergies,
+            commentaire: "",
+            Cree_par: currentUser.CIN,
+          };
+          const newClient = await ClientsService.create(clientData);
+          clientId = newClient.id;
+          draftData.clientId = newClient.id;
+        } else {
+          clientId = formData.selectedClientId!;
+          draftData.clientId = clientId;
+        }
+
+        // Create appointment
+        const appointmentData: AppointmentFormData = {
+          client_id: clientId,
+          CIN: formData.clientCIN,
+          sujet: formData.appointmentSubject,
+          date_rendez_vous: new Date(formData.appointmentDate).toISOString(),
+          Cree_par: currentUser.CIN,
+          status: formData.appointmentStatus,
+          Cabinet: formData.appointmentCabinet,
+          soin_id: parseInt(formData.appointmentSoinId),
+        };
+        const newAppointment = await AppointmentsService.create(
+          appointmentData,
+        );
+        draftData.appointmentId = newAppointment.id;
+      } else if (stepToSave === "products") {
+        // Ensure client and appointment exist, then save as draft with products
+        let clientId: number;
+        if (!currentDraft?.clientId) {
+          if (formData.isNewClient) {
+            const clientData: ClientFormData = {
+              CIN: formData.clientCIN,
+              nom: formData.clientNom,
+              prenom: formData.clientPrenom,
+              date_naissance: formData.clientDateNaissance,
+              adresse: formData.clientAdresse,
+              numero_telephone: formData.clientTelephone,
+              email: formData.clientEmail,
+              groupe_sanguin: formData.clientGroupSanguin,
+              antecedents: formData.clientAntecedents,
+              allergies: formData.clientAllergies,
+              commentaire: "",
+              Cree_par: currentUser.CIN,
+            };
+            const newClient = await ClientsService.create(clientData);
+            clientId = newClient.id;
+            draftData.clientId = newClient.id;
+          } else {
+            clientId = formData.selectedClientId!;
+            draftData.clientId = clientId;
+          }
+        } else {
+          clientId = currentDraft.clientId;
+          draftData.clientId = clientId;
+        }
+
+        if (!currentDraft?.appointmentId) {
+          const appointmentData: AppointmentFormData = {
+            client_id: clientId,
+            CIN: formData.clientCIN,
+            sujet: formData.appointmentSubject,
+            date_rendez_vous: new Date(formData.appointmentDate).toISOString(),
+            Cree_par: currentUser.CIN,
+            status: formData.appointmentStatus,
+            Cabinet: formData.appointmentCabinet,
+            soin_id: parseInt(formData.appointmentSoinId),
+          };
+          const newAppointment = await AppointmentsService.create(
+            appointmentData,
+          );
+          draftData.appointmentId = newAppointment.id;
+        } else {
+          draftData.appointmentId = currentDraft.appointmentId;
+        }
+      } else if (stepToSave === "invoice") {
+        // Create full workflow up to invoice
+        let clientId: number;
+        if (!currentDraft?.clientId) {
+          if (formData.isNewClient) {
+            const clientData: ClientFormData = {
+              CIN: formData.clientCIN,
+              nom: formData.clientNom,
+              prenom: formData.clientPrenom,
+              date_naissance: formData.clientDateNaissance,
+              adresse: formData.clientAdresse,
+              numero_telephone: formData.clientTelephone,
+              email: formData.clientEmail,
+              groupe_sanguin: formData.clientGroupSanguin,
+              antecedents: formData.clientAntecedents,
+              allergies: formData.clientAllergies,
+              commentaire: "",
+              Cree_par: currentUser.CIN,
+            };
+            const newClient = await ClientsService.create(clientData);
+            clientId = newClient.id;
+            draftData.clientId = newClient.id;
+          } else {
+            clientId = formData.selectedClientId!;
+            draftData.clientId = clientId;
+          }
+        } else {
+          clientId = currentDraft.clientId;
+          draftData.clientId = clientId;
+        }
+
+        if (!currentDraft?.appointmentId) {
+          const appointmentData: AppointmentFormData = {
+            client_id: clientId,
+            CIN: formData.clientCIN,
+            sujet: formData.appointmentSubject,
+            date_rendez_vous: new Date(formData.appointmentDate).toISOString(),
+            Cree_par: currentUser.CIN,
+            status: formData.appointmentStatus,
+            Cabinet: formData.appointmentCabinet,
+            soin_id: parseInt(formData.appointmentSoinId),
+          };
+          const newAppointment = await AppointmentsService.create(
+            appointmentData,
+          );
+          draftData.appointmentId = newAppointment.id;
+        } else {
+          draftData.appointmentId = currentDraft.appointmentId;
+        }
+
+        // Create invoice
+        const invoiceData: FactureFormData = {
+          CIN: formData.clientCIN,
+          date: new Date(formData.invoiceDate).toISOString(),
+          statut: formData.invoiceStatut,
+          notes: formData.invoiceNotes,
+          Cree_par: currentUser.CIN,
+          items: formData.invoiceItems,
+          date_paiement: undefined,
+          methode_paiement: "",
+        };
+        const newInvoice = await InvoicesService.create(invoiceData);
+        draftData.invoiceId = newInvoice.id;
+      } else if (stepToSave === "payment") {
+        // Complete the entire workflow
+        let clientId: number;
+        if (!currentDraft?.clientId) {
+          if (formData.isNewClient) {
+            const clientData: ClientFormData = {
+              CIN: formData.clientCIN,
+              nom: formData.clientNom,
+              prenom: formData.clientPrenom,
+              date_naissance: formData.clientDateNaissance,
+              adresse: formData.clientAdresse,
+              numero_telephone: formData.clientTelephone,
+              email: formData.clientEmail,
+              groupe_sanguin: formData.clientGroupSanguin,
+              antecedents: formData.clientAntecedents,
+              allergies: formData.clientAllergies,
+              commentaire: "",
+              Cree_par: currentUser.CIN,
+            };
+            const newClient = await ClientsService.create(clientData);
+            clientId = newClient.id;
+            draftData.clientId = newClient.id;
+          } else {
+            clientId = formData.selectedClientId!;
+            draftData.clientId = clientId;
+          }
+        } else {
+          clientId = currentDraft.clientId;
+          draftData.clientId = clientId;
+        }
+
+        if (!currentDraft?.appointmentId) {
+          const appointmentData: AppointmentFormData = {
+            client_id: clientId,
+            CIN: formData.clientCIN,
+            sujet: formData.appointmentSubject,
+            date_rendez_vous: new Date(formData.appointmentDate).toISOString(),
+            Cree_par: currentUser.CIN,
+            status: formData.appointmentStatus,
+            Cabinet: formData.appointmentCabinet,
+            soin_id: parseInt(formData.appointmentSoinId),
+          };
+          const newAppointment = await AppointmentsService.create(
+            appointmentData,
+          );
+          draftData.appointmentId = newAppointment.id;
+        } else {
+          draftData.appointmentId = currentDraft.appointmentId;
+        }
+
+        const invoiceData: FactureFormData = {
+          CIN: formData.clientCIN,
+          date: new Date(formData.invoiceDate).toISOString(),
+          statut: formData.invoiceStatut,
+          notes: formData.invoiceNotes,
+          Cree_par: currentUser.CIN,
+          items: formData.invoiceItems,
+          date_paiement: formData.paymentMethod
+            ? new Date(formData.paymentDate).toISOString()
+            : undefined,
+          methode_paiement: formData.paymentMethod,
+          cheque_numero: formData.chequeNumero,
+          cheque_banque: formData.chequeBanque,
+          cheque_date_tirage: formData.chequeDateTirage,
+        };
+        const newInvoice = !currentDraft?.invoiceId
+          ? await InvoicesService.create(invoiceData)
+          : await InvoicesService.update(
+              currentDraft.invoiceId,
+              invoiceData as any,
+            );
+        draftData.invoiceId = newInvoice.id;
+      }
+
+      saveDraft(draftData);
+
+      toast({
+        title: "Succès",
+        description: `Étape sauvegardée. Vous pouvez continuer plus tard.`,
+      });
+
+      setIsDrawerOpen(false);
+      await loadInitialData();
+    } catch (error) {
+      console.error("Error saving draft:", error);
+      toast({
+        title: "Erreur",
+        description: "Échec de la sauvegarde. Veuillez réessayer.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const onSubmit = async (data: WorkflowFormData) => {
     try {
       setIsLoading(true);

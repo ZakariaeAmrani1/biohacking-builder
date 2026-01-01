@@ -1881,42 +1881,73 @@ export default function Workflow() {
                 )}
 
                 {/* Navigation Buttons */}
-                <div className="flex justify-between gap-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
-                    disabled={currentStep === 1}
-                  >
-                    <ChevronLeft className="w-4 h-4 mr-2" /> Retour
-                  </Button>
-
-                  {currentStep < 5 ? (
+                <div className="space-y-3">
+                  <div className="flex justify-between gap-4">
                     <Button
                       type="button"
-                      onClick={() => setCurrentStep(currentStep + 1)}
-                      disabled={!canProceedToNextStep() || isLoading}
+                      variant="outline"
+                      onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
+                      disabled={currentStep === 1}
                     >
-                      Suivant <ChevronRight className="w-4 h-4 ml-2" />
+                      <ChevronLeft className="w-4 h-4 mr-2" /> Retour
                     </Button>
-                  ) : (
-                    <Button
-                      type="submit"
-                      disabled={!canProceedToNextStep() || isLoading}
-                      className="bg-primary hover:bg-primary/90"
-                    >
-                      {isLoading ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2" />
-                          Création en cours...
-                        </>
-                      ) : (
-                        <>
-                          <Check className="w-4 h-4 mr-2" /> Terminer
-                        </>
-                      )}
-                    </Button>
-                  )}
+
+                    {currentStep < 5 ? (
+                      <Button
+                        type="button"
+                        onClick={() => setCurrentStep(currentStep + 1)}
+                        disabled={!canProceedToNextStep() || isLoading}
+                      >
+                        Suivant <ChevronRight className="w-4 h-4 ml-2" />
+                      </Button>
+                    ) : (
+                      <Button
+                        type="submit"
+                        disabled={!canProceedToNextStep() || isLoading}
+                        className="bg-primary hover:bg-primary/90"
+                      >
+                        {isLoading ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2" />
+                            Finalisation en cours...
+                          </>
+                        ) : (
+                          <>
+                            <Check className="w-4 h-4 mr-2" /> Finaliser
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Save and Quit Button */}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      const stageMap = {
+                        1: "client" as const,
+                        2: "appointment" as const,
+                        3: "products" as const,
+                        4: "invoice" as const,
+                        5: "payment" as const,
+                      };
+                      saveAndQuitStep(stageMap[currentStep as keyof typeof stageMap]);
+                    }}
+                    disabled={isLoading}
+                    className="w-full"
+                  >
+                    {isLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-foreground mr-2" />
+                        Enregistrement...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4 mr-2" /> Enregistrer et Quitter
+                      </>
+                    )}
+                  </Button>
                 </div>
               </form>
             </Form>

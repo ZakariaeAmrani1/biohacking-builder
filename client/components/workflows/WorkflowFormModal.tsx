@@ -131,14 +131,11 @@ export default function WorkflowFormModal({
     if (isOpen) {
       loadClients();
       loadProducts();
-      if (workflow) {
-        // Pre-fill data if editing
-        setCurrentStep(initialStep as Step);
-      } else {
-        setCurrentStep(1);
-      }
+      const step = (initialStep as Step) || 1;
+      setCurrentStep(step);
+      setStartingStep(step);
     }
-  }, [isOpen, workflow, initialStep]);
+  }, [isOpen, initialStep]);
 
   // Update filtered clients when search changes
   useEffect(() => {

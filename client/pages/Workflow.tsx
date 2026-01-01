@@ -1158,19 +1158,15 @@ export default function Workflow() {
                       <CardTitle>Créer un Rendez-vous</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <FormField
-                        control={form.control}
-                        name="appointmentDate"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Date et Heure</FormLabel>
-                            <FormControl>
-                              <Input type="datetime-local" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      <div>
+                        <FormLabel className="mb-3 block">Date et Heure</FormLabel>
+                        <TimeSlotPicker
+                          value={form.getValues("appointmentDate")}
+                          onChange={(datetime) =>
+                            form.setValue("appointmentDate", datetime)
+                          }
+                        />
+                      </div>
                       <FormField
                         control={form.control}
                         name="appointmentSubject"

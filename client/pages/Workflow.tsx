@@ -1009,7 +1009,7 @@ export default function Workflow() {
               <TableBody>
                 {filteredWorkflows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
+                    <TableCell colSpan={9} className="text-center py-8">
                       <p className="text-muted-foreground">
                         Aucun enregistrement trouvé
                       </p>

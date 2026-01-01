@@ -869,7 +869,7 @@ export default function Workflow() {
 
       {/* Form Drawer */}
       <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-        <SheetContent side="right" className="w-full md:w-3/4 overflow-y-auto">
+        <SheetContent side="right" className="w-full sm:w-[90%] md:w-[85%] lg:w-[70%] overflow-y-auto">
           <SheetHeader>
             <SheetTitle>Créer un nouveau flux de travail</SheetTitle>
             <SheetDescription>

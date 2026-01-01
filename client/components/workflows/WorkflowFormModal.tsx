@@ -1,12 +1,26 @@
 import { useState, useEffect } from "react";
-import { ChevronRight, ChevronLeft } from "lucide-react";
+import {
+  CalendarDays,
+  Search,
+  Clock,
+  Stethoscope,
+  User,
+  Users,
+  UserPlus,
+  Building2,
+  Package,
+  Receipt,
+  Trash2,
+  Plus,
+  ChevronRight,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +34,23 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Switch } from "@/components/ui/switch";
 import {
   WorkflowService,
   Workflow,
@@ -31,13 +62,13 @@ import {
   Client,
   ClientFormData,
   validateClientData,
+  calculateAge,
 } from "@/services/clientsService";
 import {
   AppointmentsService,
   AppointmentFormData,
   validateAppointmentData,
   getAppointmentTypes,
-  generateTimeSlotsForDate,
 } from "@/services/appointmentsService";
 import {
   InvoicesService,
@@ -47,8 +78,11 @@ import {
   TypeBien,
   FactureStatut,
   calculateInvoiceTotals,
+  createEmptyFacture,
 } from "@/services/invoicesService";
 import { ProductsService, Product } from "@/services/productsService";
+import { SoinsService, Soin } from "@/services/soinsService";
+import { AuthService } from "@/services/authService";
 import { useToast } from "@/components/ui/use-toast";
 
 interface WorkflowFormModalProps {
@@ -69,36 +103,26 @@ export default function WorkflowFormModal({
   initialStep = 1,
 }: WorkflowFormModalProps) {
   const { toast } = useToast();
-  const [currentStep, setCurrentStep] = useState<Step>(
-    (initialStep as Step) || 1,
-  );
-  const [startingStep, setStartingStep] = useState<Step>((initialStep as Step) || 1);
+  const [currentStep, setCurrentStep] = useState<Step>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
 
-  // Shared data across steps
+  // Shared data
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [soins, setSoins] = useState<Soin[]>([]);
 
   // Step 1: Client selection
-  const [clientMode, setClientMode] = useState<"existing" | "new">("existing");
-  const [clientSearch, setClientSearch] = useState("");
-  const [filteredClients, setFilteredClients] = useState<Client[]>([]);
+  const [isNewPatientMode, setIsNewPatientMode] = useState(false);
+  const [isClientSelectorOpen, setIsClientSelectorOpen] = useState(false);
+  const [clientSearchQuery, setClientSearchQuery] = useState("");
 
-  const [newClientFormData, setNewClientFormData] = useState<ClientFormData>({
-    CIN: "",
+  const [newPatientData, setNewPatientData] = useState<Partial<ClientFormData>>({
     nom: "",
     prenom: "",
-    date_naissance: "",
-    adresse: "",
+    CIN: "",
     numero_telephone: "",
-    email: "",
-    groupe_sanguin: "",
-    antecedents: "",
-    allergies: "",
-    commentaire: "",
-    Cree_par: "",
   });
 
   // Step 2: Appointment
@@ -110,55 +134,45 @@ export default function WorkflowFormModal({
       date_rendez_vous: "",
       Cree_par: "",
       status: "confirmé",
-      Cabinet: "",
+      Cabinet: "Biohacking",
       soin_id: 0,
     });
 
-  // Step 3: Invoice (optional)
-  const [invoiceFormData, setInvoiceFormData] = useState<FactureFormData>({
-    CIN: "",
-    date: new Date().toISOString().slice(0, 16),
-    statut: FactureStatut.PAYEE,
-    notes: "",
-    Cree_par: "",
-    items: [],
-  });
-
-  const [invoiceItems, setInvoiceItems] = useState<FactureItem[]>([]);
-
-  // Track created appointment ID to avoid duplicates
+  const [appointmentTypes, setAppointmentTypes] = useState<string[]>([]);
   const [createdAppointmentId, setCreatedAppointmentId] = useState<number | null>(null);
 
-  // Load initial data
+  // Step 3: Invoice
+  const [invoiceFormData, setInvoiceFormData] = useState<FactureFormData>(
+    createEmptyFacture(),
+  );
+  const [invoiceItems, setInvoiceItems] = useState<FactureItem[]>([]);
+
+  // Load data on modal open
   useEffect(() => {
     if (isOpen) {
       loadClients();
       loadProducts();
+      loadSoins();
       const step = (initialStep as Step) || 1;
       setCurrentStep(step);
-      setStartingStep(step);
-      setCreatedAppointmentId(null);
       setErrors([]);
+      setCreatedAppointmentId(null);
     }
   }, [isOpen, initialStep]);
 
-  // Update filtered clients when search changes
+  // Load appointment types
   useEffect(() => {
-    const lowerSearch = clientSearch.toLowerCase();
-    const filtered = clients.filter(
-      (client) =>
-        client.nom.toLowerCase().includes(lowerSearch) ||
-        client.prenom.toLowerCase().includes(lowerSearch) ||
-        client.CIN.toLowerCase().includes(lowerSearch),
-    );
-    setFilteredClients(filtered);
-  }, [clientSearch, clients]);
+    if (isOpen && currentStep === 2) {
+      SoinsService.getAll()
+        .then((data) => setAppointmentTypes(data.map((s) => s.Nom)))
+        .catch(() => setAppointmentTypes([]));
+    }
+  }, [isOpen, currentStep]);
 
   const loadClients = async () => {
     try {
       const data = await ClientsService.getAll();
       setClients(data);
-      setFilteredClients(data);
     } catch (error) {
       console.error("Error loading clients:", error);
     }
@@ -173,8 +187,27 @@ export default function WorkflowFormModal({
     }
   };
 
+  const loadSoins = async () => {
+    try {
+      const data = await SoinsService.getAll();
+      setSoins(data);
+    } catch (error) {
+      console.error("Error loading soins:", error);
+    }
+  };
+
+  const filteredClients = clients.filter((client) => {
+    const searchTerm = clientSearchQuery.toLowerCase();
+    return (
+      client.nom.toLowerCase().includes(searchTerm) ||
+      client.prenom.toLowerCase().includes(searchTerm) ||
+      client.CIN.toLowerCase().includes(searchTerm) ||
+      client.email.toLowerCase().includes(searchTerm)
+    );
+  });
+
   // Step 1 handlers
-  const handleSelectExistingClient = (client: Client) => {
+  const handleClientSelect = (client: Client) => {
     setSelectedClient(client);
     setAppointmentFormData((prev) => ({
       ...prev,
@@ -185,12 +218,27 @@ export default function WorkflowFormModal({
       ...prev,
       CIN: client.CIN,
     }));
-    setClientSearch("");
-    setFilteredClients([]);
+    setIsClientSelectorOpen(false);
+    setClientSearchQuery("");
+    setErrors([]);
   };
 
-  const handleCreateNewClient = async () => {
-    const validationErrors = validateClientData(newClientFormData);
+  const handleCreateNewPatient = async () => {
+    const validationErrors = validateClientData({
+      nom: newPatientData.nom || "",
+      prenom: newPatientData.prenom || "",
+      CIN: newPatientData.CIN || "",
+      numero_telephone: newPatientData.numero_telephone || "",
+      date_naissance: "2009-09-02T19:30",
+      adresse: "",
+      grupo_sanguin: "A+",
+      email: "",
+      commentaire: "",
+      allergies: "",
+      antecedents: "",
+      Cree_par: AuthService.getCurrentUser().CIN,
+    } as ClientFormData);
+
     if (validationErrors.length > 0) {
       setErrors(validationErrors);
       return;
@@ -198,31 +246,29 @@ export default function WorkflowFormModal({
 
     try {
       setIsSubmitting(true);
-      const newClient = await ClientsService.create(newClientFormData);
-      setSelectedClient(newClient);
-      setAppointmentFormData((prev) => ({
-        ...prev,
-        client_id: newClient.id,
-        CIN: newClient.CIN,
-      }));
-      setInvoiceFormData((prev) => ({
-        ...prev,
-        CIN: newClient.CIN,
-      }));
-      setClientMode("existing");
-      setNewClientFormData({
-        CIN: "",
+      const requiredPatientData: ClientFormData = {
+        nom: newPatientData.nom || "",
+        prenom: newPatientData.prenom || "",
+        CIN: newPatientData.CIN || "",
+        numero_telephone: newPatientData.numero_telephone || "",
+        date_naissance: "2009-09-02T19:30",
+        adresse: "",
+        groupe_sanguin: "A+",
+        email: "",
+        commentaire: "",
+        allergies: "",
+        antecedents: "",
+        Cree_par: AuthService.getCurrentUser().CIN,
+      };
+
+      const newClient = await ClientsService.create(requiredPatientData);
+      handleClientSelect(newClient);
+      setIsNewPatientMode(false);
+      setNewPatientData({
         nom: "",
         prenom: "",
-        date_naissance: "",
-        adresse: "",
+        CIN: "",
         numero_telephone: "",
-        email: "",
-        groupe_sanguin: "",
-        antecedents: "",
-        allergies: "",
-        commentaire: "",
-        Cree_par: "",
       });
       toast({
         title: "Succès",
@@ -235,7 +281,7 @@ export default function WorkflowFormModal({
     }
   };
 
-  const handleNextFromStep1 = async () => {
+  const handleNextFromStep1 = () => {
     if (!selectedClient) {
       setErrors(["Veuillez sélectionner ou créer un patient"]);
       return;
@@ -245,7 +291,7 @@ export default function WorkflowFormModal({
   };
 
   // Step 2 handlers
-  const handleAppointmentFieldChange = (
+  const handleAppointmentChange = (
     field: keyof AppointmentFormData,
     value: any,
   ) => {
@@ -253,10 +299,17 @@ export default function WorkflowFormModal({
       ...prev,
       [field]: value,
     }));
+    setErrors([]);
   };
 
   const handleSaveAndQuit = async () => {
-    const validationErrors = validateAppointmentData(appointmentFormData);
+    const currentUser = AuthService.getCurrentUser();
+    const updatedFormData = {
+      ...appointmentFormData,
+      Cree_par: currentUser.CIN,
+    };
+
+    const validationErrors = validateAppointmentData(updatedFormData);
     if (validationErrors.length > 0) {
       setErrors(validationErrors);
       return;
@@ -264,14 +317,12 @@ export default function WorkflowFormModal({
 
     try {
       setIsSubmitting(true);
-      const appointment = await AppointmentsService.create(
-        appointmentFormData,
-      );
+      const appointment = await AppointmentsService.create(updatedFormData);
 
       await WorkflowService.create({
-        client_CIN: appointmentFormData.CIN,
+        client_CIN: updatedFormData.CIN,
         rendez_vous_id: appointment.id,
-        Cree_par: appointmentFormData.Cree_par,
+        Cree_par: currentUser.CIN,
       });
 
       toast({
@@ -289,7 +340,13 @@ export default function WorkflowFormModal({
   };
 
   const handleNextFromStep2 = async () => {
-    const validationErrors = validateAppointmentData(appointmentFormData);
+    const currentUser = AuthService.getCurrentUser();
+    const updatedFormData = {
+      ...appointmentFormData,
+      Cree_par: currentUser.CIN,
+    };
+
+    const validationErrors = validateAppointmentData(updatedFormData);
     if (validationErrors.length > 0) {
       setErrors(validationErrors);
       return;
@@ -297,17 +354,8 @@ export default function WorkflowFormModal({
 
     try {
       setIsSubmitting(true);
-      const appointment = await AppointmentsService.create(
-        appointmentFormData,
-      );
-
+      const appointment = await AppointmentsService.create(updatedFormData);
       setCreatedAppointmentId(appointment.id);
-
-      setInvoiceFormData((prev) => ({
-        ...prev,
-        CIN: appointmentFormData.CIN,
-      }));
-
       setErrors([]);
       setCurrentStep(3);
     } catch (error: any) {
@@ -357,6 +405,7 @@ export default function WorkflowFormModal({
       }
       return updated;
     });
+    setErrors([]);
   };
 
   const handleCompleteWorkflow = async () => {
@@ -365,8 +414,11 @@ export default function WorkflowFormModal({
       return;
     }
 
+    const currentUser = AuthService.getCurrentUser();
+
     const validationErrors = validateFactureData({
       ...invoiceFormData,
+      Cree_par: currentUser.CIN,
       items: invoiceItems,
     });
 
@@ -380,23 +432,21 @@ export default function WorkflowFormModal({
 
       const invoice = await InvoicesService.create({
         ...invoiceFormData,
+        Cree_par: currentUser.CIN,
         items: invoiceItems,
       });
 
-      // Use the appointment ID that was created in step 2, or create a new one
       let appointmentId = createdAppointmentId;
       if (!appointmentId) {
-        const appointmentResult = await AppointmentsService.create(
-          appointmentFormData,
-        );
-        appointmentId = appointmentResult.id;
+        const appointment = await AppointmentsService.create(appointmentFormData);
+        appointmentId = appointment.id;
       }
 
       await WorkflowService.create({
         client_CIN: appointmentFormData.CIN,
         rendez_vous_id: appointmentId,
         facture_id: invoice.id,
-        Cree_par: appointmentFormData.Cree_par,
+        Cree_par: currentUser.CIN,
       });
 
       toast({
@@ -421,22 +471,29 @@ export default function WorkflowFormModal({
   };
 
   const renderStepIndicator = () => (
-    <div className="flex items-center justify-center gap-2 mb-6">
+    <div className="flex items-center justify-center gap-3 mb-6 px-6 py-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg border border-blue-100">
       {[1, 2, 3].map((step) => (
-        <div key={step} className="flex items-center gap-2">
+        <div key={step} className="flex items-center gap-3">
           <div
-            className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm ${
-              step <= currentStep
-                ? "bg-blue-600 text-white"
-                : "bg-gray-200 text-gray-600"
+            className={`flex h-10 w-10 items-center justify-center rounded-full font-semibold transition-all ${
+              step < currentStep
+                ? "bg-green-500 text-white ring-2 ring-green-200"
+                : step === currentStep
+                  ? "bg-blue-600 text-white ring-2 ring-blue-300 scale-110"
+                  : "bg-gray-200 text-gray-600"
             }`}
           >
-            {step}
+            {step < currentStep ? "✓" : step}
+          </div>
+          <div className="text-sm font-medium">
+            {step === 1 && "Patient"}
+            {step === 2 && "Rendez-vous"}
+            {step === 3 && "Facturation"}
           </div>
           {step < 3 && (
             <div
-              className={`w-8 h-1 ${
-                step < currentStep ? "bg-blue-600" : "bg-gray-200"
+              className={`h-1 w-12 rounded-full transition-all ${
+                step < currentStep ? "bg-green-500" : "bg-gray-200"
               }`}
             />
           )}
@@ -447,229 +504,371 @@ export default function WorkflowFormModal({
 
   const renderStep1 = () => (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold">Étape 1: Identifier le Patient</h3>
-
-      <div className="flex gap-2 mb-4">
-        <Button
-          variant={clientMode === "existing" ? "default" : "outline"}
-          onClick={() => setClientMode("existing")}
-          className="flex-1"
-        >
-          Sélectionner Patient
-        </Button>
-        <Button
-          variant={clientMode === "new" ? "default" : "outline"}
-          onClick={() => setClientMode("new")}
-          className="flex-1"
-        >
-          Créer Nouveau Patient
-        </Button>
+      <div className="flex items-center justify-between">
+        <Label className="flex items-center gap-2 text-base font-semibold">
+          <Users className="h-5 w-5" />
+          Sélectionner le Patient
+        </Label>
+        <div className="flex items-center space-x-2">
+          <Label htmlFor="new-patient-mode" className="text-sm">
+            Nouveau patient
+          </Label>
+          <Switch
+            id="new-patient-mode"
+            checked={isNewPatientMode}
+            onCheckedChange={setIsNewPatientMode}
+            disabled={isSubmitting}
+          />
+        </div>
       </div>
 
-      {clientMode === "existing" ? (
-        <div className="space-y-3">
-          <div>
-            <Label htmlFor="client-search">Rechercher Patient</Label>
-            <Input
-              id="client-search"
-              placeholder="Nom, Prénom ou CIN..."
-              value={clientSearch}
-              onChange={(e) => setClientSearch(e.target.value)}
-            />
-          </div>
+      <Separator />
 
-          {clientSearch && filteredClients.length > 0 && (
-            <div className="border rounded-lg max-h-48 overflow-y-auto">
-              {filteredClients.map((client) => (
-                <button
-                  key={client.id}
-                  onClick={() => handleSelectExistingClient(client)}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-100 border-b last:border-b-0 transition"
-                >
-                  <div className="font-medium">
-                    {client.prenom} {client.nom}
+      {!isNewPatientMode ? (
+        <>
+          <Popover
+            open={isClientSelectorOpen}
+            onOpenChange={setIsClientSelectorOpen}
+            modal={true}
+          >
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={isClientSelectorOpen}
+                className="w-full justify-between"
+                disabled={isSubmitting}
+              >
+                {selectedClient ? (
+                  <div className="flex items-center gap-2">
+                    <span>
+                      {selectedClient.prenom} {selectedClient.nom}
+                    </span>
+                    <Badge variant="outline" className="text-xs">
+                      {selectedClient.CIN}
+                    </Badge>
                   </div>
-                  <div className="text-sm text-gray-500">{client.CIN}</div>
-                </button>
-              ))}
-            </div>
-          )}
+                ) : (
+                  "Rechercher et sélectionner un patient..."
+                )}
+                <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              className="w-[500px] p-0 z-[60] shadow-lg border-2"
+              sideOffset={5}
+              align="start"
+            >
+              <Command>
+                <CommandInput
+                  placeholder="Rechercher par nom, prénom, CIN, email..."
+                  value={clientSearchQuery}
+                  onValueChange={setClientSearchQuery}
+                />
+                <CommandList>
+                  <CommandEmpty>Aucun patient trouvé.</CommandEmpty>
+                  <CommandGroup>
+                    {filteredClients.map((client) => (
+                      <CommandItem
+                        key={client.id}
+                        value={`${client.prenom} ${client.nom} ${client.CIN} ${client.email}`}
+                        onSelect={() => handleClientSelect(client)}
+                        className="flex items-center justify-between p-3"
+                      >
+                        <div className="flex flex-col">
+                          <div className="font-medium">
+                            {client.prenom} {client.nom}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {client.CIN} • {calculateAge(client.date_naissance)}{" "}
+                            ans • {client.email}
+                          </div>
+                        </div>
+                        <Badge variant="outline">
+                          {client.groupe_sanguin}
+                        </Badge>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
 
           {selectedClient && (
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded">
-              <div className="font-medium">Patient Sélectionné</div>
-              <div>
-                {selectedClient.prenom} {selectedClient.nom}
-              </div>
-              <div className="text-sm text-gray-600">{selectedClient.CIN}</div>
-            </div>
+            <Card className="border-2 border-blue-200 bg-blue-50">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <div className="font-semibold text-base">
+                      {selectedClient.prenom} {selectedClient.nom}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      CIN: {selectedClient.CIN} • Âge:{" "}
+                      {calculateAge(selectedClient.date_naissance)} ans
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Email: {selectedClient.email} • Tél:{" "}
+                      {selectedClient.numero_telephone}
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="gap-1 text-base">
+                    {selectedClient.groupe_sanguin}
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
           )}
-        </div>
+        </>
       ) : (
-        <div className="space-y-3">
-          <div>
-            <Label htmlFor="new-cin">CIN *</Label>
-            <Input
-              id="new-cin"
-              value={newClientFormData.CIN}
-              onChange={(e) =>
-                setNewClientFormData((prev) => ({
-                  ...prev,
-                  CIN: e.target.value,
-                }))
-              }
-              placeholder="B1234567"
-            />
-          </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-4">
+                <UserPlus className="h-4 w-4" />
+                <span className="font-semibold">Créer un nouveau patient</span>
+              </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label htmlFor="new-nom">Nom *</Label>
-              <Input
-                id="new-nom"
-                value={newClientFormData.nom}
-                onChange={(e) =>
-                  setNewClientFormData((prev) => ({
-                    ...prev,
-                    nom: e.target.value,
-                  }))
-                }
-              />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-patient-prenom">Prénom *</Label>
+                  <Input
+                    id="new-patient-prenom"
+                    type="text"
+                    value={newPatientData.prenom || ""}
+                    onChange={(e) =>
+                      setNewPatientData((prev) => ({
+                        ...prev,
+                        prenom: e.target.value,
+                      }))
+                    }
+                    placeholder="Entrez le prénom"
+                    disabled={isSubmitting}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="new-patient-nom">Nom *</Label>
+                  <Input
+                    id="new-patient-nom"
+                    type="text"
+                    value={newPatientData.nom || ""}
+                    onChange={(e) =>
+                      setNewPatientData((prev) => ({
+                        ...prev,
+                        nom: e.target.value,
+                      }))
+                    }
+                    placeholder="Entrez le nom"
+                    disabled={isSubmitting}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-patient-cin">CIN *</Label>
+                  <Input
+                    id="new-patient-cin"
+                    type="text"
+                    value={newPatientData.CIN || ""}
+                    onChange={(e) =>
+                      setNewPatientData((prev) => ({
+                        ...prev,
+                        CIN: e.target.value.toUpperCase(),
+                      }))
+                    }
+                    placeholder="Ex: B1234567"
+                    disabled={isSubmitting}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="new-patient-phone">
+                    Numéro de téléphone *
+                  </Label>
+                  <Input
+                    id="new-patient-phone"
+                    type="tel"
+                    value={newPatientData.numero_telephone || ""}
+                    onChange={(e) =>
+                      setNewPatientData((prev) => ({
+                        ...prev,
+                        numero_telephone: e.target.value,
+                      }))
+                    }
+                    placeholder="Ex: 0612345678"
+                    disabled={isSubmitting}
+                  />
+                </div>
+              </div>
+
+              <div className="text-xs text-muted-foreground">
+                * Champs obligatoires. Le patient sera créé avec ces informations
+                de base.
+              </div>
+
+              <Button
+                onClick={handleCreateNewPatient}
+                disabled={isSubmitting}
+                className="w-full"
+              >
+                Créer Patient
+              </Button>
             </div>
-            <div>
-              <Label htmlFor="new-prenom">Prénom *</Label>
-              <Input
-                id="new-prenom"
-                value={newClientFormData.prenom}
-                onChange={(e) =>
-                  setNewClientFormData((prev) => ({
-                    ...prev,
-                    prenom: e.target.value,
-                  }))
-                }
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="new-email">Email</Label>
-            <Input
-              id="new-email"
-              type="email"
-              value={newClientFormData.email}
-              onChange={(e) =>
-                setNewClientFormData((prev) => ({
-                  ...prev,
-                  email: e.target.value,
-                }))
-              }
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="new-phone">Téléphone</Label>
-            <Input
-              id="new-phone"
-              value={newClientFormData.numero_telephone}
-              onChange={(e) =>
-                setNewClientFormData((prev) => ({
-                  ...prev,
-                  numero_telephone: e.target.value,
-                }))
-              }
-            />
-          </div>
-
-          <Button
-            onClick={handleCreateNewClient}
-            disabled={isSubmitting}
-            className="w-full"
-          >
-            Créer Patient
-          </Button>
-        </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
 
   const renderStep2 = () => (
-    <div className="space-y-4">
-      <h3 className="text-lg font-semibold">Étape 2: Rendez-vous</h3>
-
+    <form className="space-y-6">
       {selectedClient && (
-        <div className="p-3 bg-blue-50 border border-blue-200 rounded">
-          <div className="text-sm">Patient: {selectedClient.prenom} {selectedClient.nom}</div>
-        </div>
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="pt-6">
+            <div className="text-sm">
+              Patient:{" "}
+              <span className="font-semibold">
+                {selectedClient.prenom} {selectedClient.nom}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
-      <div>
-        <Label htmlFor="subject">Sujet du Rendez-vous *</Label>
+      <div className="space-y-2">
+        <Label htmlFor="sujet" className="flex items-center gap-2">
+          <Stethoscope className="h-4 w-4" />
+          Type de rendez-vous *
+        </Label>
         <Select
           value={appointmentFormData.sujet}
-          onValueChange={(value) =>
-            handleAppointmentFieldChange("sujet", value)
-          }
+          onValueChange={(value) => handleAppointmentChange("sujet", value)}
+          disabled={isSubmitting}
         >
-          <SelectTrigger id="subject">
-            <SelectValue placeholder="Sélectionner le sujet" />
+          <SelectTrigger>
+            <SelectValue placeholder="Sélectionnez le type de rendez-vous" />
           </SelectTrigger>
           <SelectContent>
-            {getAppointmentTypes().map((type) => (
-              <SelectItem key={type} value={type}>
-                {type}
+            {appointmentTypes.length > 0 ? (
+              appointmentTypes.map((type) => (
+                <SelectItem key={type} value={type}>
+                  {type}
+                </SelectItem>
+              ))
+            ) : (
+              <SelectItem value="Consultation">Consultation</SelectItem>
+            )}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="appointment-date" className="flex items-center gap-2">
+          <Clock className="h-4 w-4" />
+          Date et heure du rendez-vous *
+        </Label>
+        <Input
+          id="appointment-date"
+          type="datetime-local"
+          value={appointmentFormData.date_rendez_vous}
+          onChange={(e) =>
+            handleAppointmentChange("date_rendez_vous", e.target.value)
+          }
+          disabled={isSubmitting}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="cabinet" className="flex items-center gap-2">
+          <Building2 className="h-4 w-4" />
+          Cabinet *
+        </Label>
+        <Select
+          value={appointmentFormData.Cabinet}
+          onValueChange={(value) => handleAppointmentChange("Cabinet", value)}
+          disabled={isSubmitting}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Sélectionnez le cabinet" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Biohacking">Biohacking</SelectItem>
+            <SelectItem value="Nassens">Nassens</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="soin-id" className="flex items-center gap-2">
+          <Stethoscope className="h-4 w-4" />
+          Soin/Service *
+        </Label>
+        <Select
+          value={appointmentFormData.soin_id ? String(appointmentFormData.soin_id) : ""}
+          onValueChange={(value) =>
+            handleAppointmentChange("soin_id", parseInt(value))
+          }
+          disabled={isSubmitting}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Sélectionnez un soin" />
+          </SelectTrigger>
+          <SelectContent>
+            {soins.map((soin) => (
+              <SelectItem key={soin.id} value={String(soin.id)}>
+                {soin.Nom}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
 
-      <div>
-        <Label htmlFor="appointment-date">Date et Heure *</Label>
-        <Input
-          id="appointment-date"
-          type="datetime-local"
-          value={appointmentFormData.date_rendez_vous}
-          onChange={(e) =>
-            handleAppointmentFieldChange("date_rendez_vous", e.target.value)
-          }
-        />
+      <div className="space-y-2">
+        <Label htmlFor="status" className="flex items-center gap-2">
+          <Clock className="h-4 w-4" />
+          Statut
+        </Label>
+        <Select
+          value={appointmentFormData.status}
+          onValueChange={(value) => handleAppointmentChange("status", value)}
+          disabled={isSubmitting}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="programmé">Programmé</SelectItem>
+            <SelectItem value="confirmé">Confirmé</SelectItem>
+            <SelectItem value="terminé">Terminé</SelectItem>
+            <SelectItem value="annulé">Annulé</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
-
-      <div>
-        <Label htmlFor="cabinet">Cabinet *</Label>
-        <Input
-          id="cabinet"
-          value={appointmentFormData.Cabinet}
-          onChange={(e) =>
-            handleAppointmentFieldChange("Cabinet", e.target.value)
-          }
-          placeholder="Nom du cabinet"
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="soin-id">Soin/Service *</Label>
-        <Input
-          id="soin-id"
-          type="number"
-          value={appointmentFormData.soin_id}
-          onChange={(e) =>
-            handleAppointmentFieldChange("soin_id", parseInt(e.target.value))
-          }
-          placeholder="ID du soin"
-        />
-      </div>
-    </div>
+    </form>
   );
 
   const renderStep3 = () => {
     const totals = calculateInvoiceTotals(invoiceItems);
     return (
-      <div className="space-y-4 max-h-96 overflow-y-auto">
-        <h3 className="text-lg font-semibold">Étape 3: Facturation (Optionnel)</h3>
+      <div className="space-y-6 max-h-96 overflow-y-auto pr-4">
+        <Card className="border-green-200 bg-green-50">
+          <CardContent className="pt-6">
+            <div className="text-sm">
+              Patient:{" "}
+              <span className="font-semibold">
+                {selectedClient?.prenom} {selectedClient?.nom}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
 
-        <div>
-          <Label htmlFor="invoice-date">Date de Facture</Label>
+        <div className="space-y-2">
+          <Label htmlFor="invoice-date" className="flex items-center gap-2">
+            <CalendarDays className="h-4 w-4" />
+            Date de Facture
+          </Label>
           <Input
             id="invoice-date"
             type="datetime-local"
@@ -680,101 +879,161 @@ export default function WorkflowFormModal({
                 date: e.target.value,
               }))
             }
+            disabled={isSubmitting}
           />
         </div>
 
-        <div>
-          <Label>Articles *</Label>
-          <div className="space-y-2 mb-3">
-            {invoiceItems.map((item, index) => (
-              <div key={index} className="flex gap-2 items-start p-2 bg-gray-50 rounded">
-                <div className="flex-1 space-y-2">
-                  <Select
-                    value={item.id_bien?.toString() || ""}
-                    onValueChange={(value) =>
-                      handleInvoiceItemChange(index, "id_bien", parseInt(value))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Produit/Service" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {products.map((product) => (
-                        <SelectItem key={product.id} value={product.id.toString()}>
-                          {product.Nom} - {product.prix}DH
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input
-                      type="number"
-                      placeholder="Quantité"
-                      value={item.quantite}
-                      onChange={(e) =>
-                        handleInvoiceItemChange(
-                          index,
-                          "quantite",
-                          parseInt(e.target.value),
-                        )
-                      }
-                      min="1"
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Prix unitaire"
-                      value={item.prix_unitaire}
-                      onChange={(e) =>
-                        handleInvoiceItemChange(
-                          index,
-                          "prix_unitaire",
-                          parseFloat(e.target.value),
-                        )
-                      }
-                      min="0"
-                      step="0.01"
-                    />
-                  </div>
-                </div>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => handleRemoveInvoiceItem(index)}
-                >
-                  Supprimer
-                </Button>
-              </div>
-            ))}
+        <Separator />
+
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Label className="flex items-center gap-2 font-semibold">
+              <Package className="h-4 w-4" />
+              Articles *
+            </Label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleAddInvoiceItem}
+              disabled={isSubmitting}
+            >
+              <Plus className="h-3 w-3 mr-1" />
+              Ajouter
+            </Button>
           </div>
 
-          <Button
-            variant="outline"
-            onClick={handleAddInvoiceItem}
-            className="w-full mb-3"
-          >
-            Ajouter Article
-          </Button>
+          {invoiceItems.length === 0 ? (
+            <div className="text-center p-6 text-muted-foreground border-2 border-dashed rounded-lg">
+              Aucun article ajouté. Cliquez sur "Ajouter" pour commencer.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {invoiceItems.map((item, index) => (
+                <Card key={index} className="border">
+                  <CardContent className="pt-4 pb-4">
+                    <div className="space-y-3">
+                      <div className="flex gap-2 items-start">
+                        <div className="flex-1 space-y-2">
+                          <Select
+                            value={item.id_bien ? String(item.id_bien) : ""}
+                            onValueChange={(value) =>
+                              handleInvoiceItemChange(
+                                index,
+                                "id_bien",
+                                parseInt(value),
+                              )
+                            }
+                            disabled={isSubmitting}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Produit/Service" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {products.map((product) => (
+                                <SelectItem key={product.id} value={String(product.id)}>
+                                  {product.Nom} - {product.prix}DH
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Quantité</Label>
+                              <Input
+                                type="number"
+                                value={item.quantite}
+                                onChange={(e) =>
+                                  handleInvoiceItemChange(
+                                    index,
+                                    "quantite",
+                                    parseInt(e.target.value),
+                                  )
+                                }
+                                min="1"
+                                disabled={isSubmitting}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Prix unitaire</Label>
+                              <Input
+                                type="number"
+                                value={item.prix_unitaire}
+                                onChange={(e) =>
+                                  handleInvoiceItemChange(
+                                    index,
+                                    "prix_unitaire",
+                                    parseFloat(e.target.value),
+                                  )
+                                }
+                                min="0"
+                                step="0.01"
+                                disabled={isSubmitting}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleRemoveInvoiceItem(index)}
+                          disabled={isSubmitting}
+                          className="mt-7"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
 
         {invoiceItems.length > 0 && (
-          <div className="p-3 bg-gray-50 rounded space-y-1">
-            <div className="flex justify-between text-sm">
-              <span>Total HT:</span>
-              <span>{totals.prix_ht.toFixed(2)} DH</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span>TVA (20%):</span>
-              <span>{totals.tva_amount.toFixed(2)} DH</span>
-            </div>
-            <div className="flex justify-between font-semibold border-t pt-1">
-              <span>Total TTC:</span>
-              <span>{totals.prix_total.toFixed(2)} DH</span>
-            </div>
-          </div>
+          <>
+            <Separator />
+            <Card className="bg-blue-50 border-blue-200">
+              <CardContent className="pt-6">
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Total HT:</span>
+                    <span className="font-medium">
+                      {totals.prix_ht.toFixed(2)} DH
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">
+                      TVA (20%):
+                    </span>
+                    <span className="font-medium">
+                      {totals.tva_amount.toFixed(2)} DH
+                    </span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between text-base">
+                    <span className="font-semibold">Total TTC:</span>
+                    <span className="font-bold text-blue-600">
+                      {totals.prix_total.toFixed(2)} DH
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </>
         )}
 
-        <div>
-          <Label htmlFor="payment-method">Méthode de Paiement</Label>
+        <div className="space-y-2">
+          <Label
+            htmlFor="payment-method"
+            className="flex items-center gap-2"
+          >
+            <Receipt className="h-4 w-4" />
+            Méthode de Paiement
+          </Label>
           <Select
             value={invoiceFormData.methode_paiement || ""}
             onValueChange={(value) =>
@@ -783,8 +1042,9 @@ export default function WorkflowFormModal({
                 methode_paiement: value,
               }))
             }
+            disabled={isSubmitting}
           >
-            <SelectTrigger id="payment-method">
+            <SelectTrigger>
               <SelectValue placeholder="Sélectionner" />
             </SelectTrigger>
             <SelectContent>
@@ -795,7 +1055,7 @@ export default function WorkflowFormModal({
           </Select>
         </div>
 
-        <div>
+        <div className="space-y-2">
           <Label htmlFor="invoice-notes">Notes</Label>
           <Textarea
             id="invoice-notes"
@@ -807,6 +1067,8 @@ export default function WorkflowFormModal({
               }))
             }
             placeholder="Notes additionnelles..."
+            disabled={isSubmitting}
+            className="min-h-24"
           />
         </div>
       </div>
@@ -815,13 +1077,16 @@ export default function WorkflowFormModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="sm:max-w-[700px] max-h-[95vh] overflow-y-auto scrollbar-thin">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <CalendarDays className="h-5 w-5" />
             {workflow ? "Modifier Flux" : "Créer Nouveau Flux"}
           </DialogTitle>
           <DialogDescription>
-            Remplissez les informations du flux étape par étape
+            {workflow
+              ? "Modifiez les informations du flux"
+              : "Créez un nouveau flux en suivant les étapes"}
           </DialogDescription>
         </DialogHeader>
 
@@ -830,7 +1095,7 @@ export default function WorkflowFormModal({
         {errors.length > 0 && (
           <Alert variant="destructive">
             <AlertDescription>
-              <ul className="list-disc list-inside">
+              <ul className="list-disc list-inside space-y-1">
                 {errors.map((error, i) => (
                   <li key={i}>{error}</li>
                 ))}
@@ -839,13 +1104,13 @@ export default function WorkflowFormModal({
           </Alert>
         )}
 
-        <div className="py-4">
+        <div className="py-4 px-6">
           {currentStep === 1 && renderStep1()}
           {currentStep === 2 && renderStep2()}
           {currentStep === 3 && renderStep3()}
         </div>
 
-        <DialogFooter className="flex gap-2 justify-between">
+        <DialogFooter className="flex justify-between gap-2 px-6">
           <div>
             {currentStep > 1 && (
               <Button
@@ -853,7 +1118,6 @@ export default function WorkflowFormModal({
                 onClick={handlePreviousStep}
                 disabled={isSubmitting}
               >
-                <ChevronLeft className="w-4 h-4 mr-2" />
                 Précédent
               </Button>
             )}
@@ -878,10 +1142,7 @@ export default function WorkflowFormModal({
                 >
                   Enregistrer et Quitter
                 </Button>
-                <Button
-                  onClick={handleNextFromStep2}
-                  disabled={isSubmitting}
-                >
+                <Button onClick={handleNextFromStep2} disabled={isSubmitting}>
                   Suivant
                   <ChevronRight className="w-4 h-4 ml-2" />
                 </Button>
@@ -891,7 +1152,7 @@ export default function WorkflowFormModal({
             {currentStep === 3 && (
               <Button
                 onClick={handleCompleteWorkflow}
-                disabled={isSubmitting}
+                disabled={isSubmitting || invoiceItems.length === 0}
               >
                 Terminer
               </Button>

@@ -867,7 +867,7 @@ export default function Workflow() {
       <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
         <SheetContent
           side="right"
-          className="w-full sm:w-[90%] md:w-[85%] lg:w-[70%] overflow-y-auto"
+          className="w-full sm:w-[98%] md:w-[95%] lg:w-[85%] xl:w-[80%] overflow-y-auto"
         >
           <SheetHeader>
             <SheetTitle>Créer un nouveau flux de travail</SheetTitle>

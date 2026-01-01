@@ -381,13 +381,18 @@ export default function WorkflowFormModal({
         items: invoiceItems,
       });
 
-      const appointmentResult = await AppointmentsService.create(
-        appointmentFormData,
-      );
+      // Use the appointment ID that was created in step 2, or create a new one
+      let appointmentId = createdAppointmentId;
+      if (!appointmentId) {
+        const appointmentResult = await AppointmentsService.create(
+          appointmentFormData,
+        );
+        appointmentId = appointmentResult.id;
+      }
 
       await WorkflowService.create({
         client_CIN: appointmentFormData.CIN,
-        rendez_vous_id: appointmentResult.id,
+        rendez_vous_id: appointmentId,
         facture_id: invoice.id,
         Cree_par: appointmentFormData.Cree_par,
       });

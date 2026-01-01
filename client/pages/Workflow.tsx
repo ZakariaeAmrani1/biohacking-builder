@@ -64,6 +64,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import TimeSlotPicker from "@/components/appointments/TimeSlotPicker";
 import {
   ClientsService,
   Client,
@@ -127,6 +128,23 @@ interface WorkflowRecord {
   client: Client;
 }
 
+interface WorkflowDraft {
+  id?: string;
+  stage:
+    | "client"
+    | "appointment"
+    | "products"
+    | "invoice"
+    | "payment"
+    | "completed";
+  clientId?: number;
+  appointmentId?: number;
+  invoiceId?: number;
+  formData: Partial<WorkflowFormData>;
+  createdAt: string;
+  updatedAt: string;
+}
+
 const STEPS = [
   { id: 1, label: "Client", description: "Sélectionner ou créer un client" },
   { id: 2, label: "Rendez-vous", description: "Créer un rendez-vous" },
@@ -171,6 +189,12 @@ export default function Workflow() {
   const [isLoading, setIsLoading] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [workflows, setWorkflows] = useState<WorkflowRecord[]>([]);
+  const [workflowDrafts, setWorkflowDrafts] = useState<WorkflowDraft[]>([]);
+  const [currentDraft, setCurrentDraft] = useState<WorkflowDraft | null>(null);
+  const [showWorkflowDetailsModal, setShowWorkflowDetailsModal] =
+    useState(false);
+  const [selectedWorkflowDetails, setSelectedWorkflowDetails] =
+    useState<WorkflowRecord | null>(null);
 
   // Search and filter states
   const [searchTerm, setSearchTerm] = useState("");
@@ -363,69 +387,358 @@ export default function Workflow() {
     };
   };
 
-  const onSubmit = async (data: WorkflowFormData) => {
+  const handleViewWorkflow = (workflow: WorkflowRecord) => {
+    setSelectedWorkflowDetails(workflow);
+    setShowWorkflowDetailsModal(true);
+  };
+
+  const handleDeleteWorkflow = async (workflow: WorkflowRecord) => {
+    const confirmed = window.confirm(
+      `Êtes-vous sûr de vouloir supprimer le flux pour ${workflow.client.prenom} ${workflow.client.nom}? Cette action supprimera le rendez-vous et la facture.`,
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setIsLoading(true);
+      // Delete the appointment and invoice
+      if (workflow.appointment.id) {
+        await AppointmentsService.delete(workflow.appointment.id);
+      }
+      if (workflow.invoice.id) {
+        await InvoicesService.delete(workflow.invoice.id);
+      }
+
+      toast({
+        title: "Succès",
+        description: `Le flux pour ${workflow.client.prenom} ${workflow.client.nom} a été supprimé.`,
+      });
+
+      await loadInitialData();
+    } catch (error) {
+      console.error("Error deleting workflow:", error);
+      toast({
+        title: "Erreur",
+        description: "Échec de la suppression du flux. Veuillez réessayer.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const saveDraft = (draft: WorkflowDraft) => {
+    const existingIndex = workflowDrafts.findIndex((d) => d.id === draft.id);
+    if (existingIndex >= 0) {
+      const updated = [...workflowDrafts];
+      updated[existingIndex] = draft;
+      setWorkflowDrafts(updated);
+    } else {
+      setWorkflowDrafts([...workflowDrafts, draft]);
+    }
+    setCurrentDraft(draft);
+  };
+
+  const saveAndQuitStep = async (stepToSave: WorkflowDraft["stage"]) => {
     try {
       setIsLoading(true);
       const currentUser = AuthService.getCurrentUser();
+      const formData = form.getValues();
+      let draftData: WorkflowDraft = {
+        id: currentDraft?.id || `draft-${Date.now()}`,
+        stage: stepToSave,
+        formData,
+        createdAt: currentDraft?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
 
-      // Step 1: Create or use existing client
-      let clientId: number;
-      if (data.isNewClient) {
-        const clientData: ClientFormData = {
-          CIN: data.clientCIN,
-          nom: data.clientNom,
-          prenom: data.clientPrenom,
-          date_naissance: data.clientDateNaissance,
-          adresse: data.clientAdresse,
-          numero_telephone: data.clientTelephone,
-          email: data.clientEmail,
-          groupe_sanguin: data.clientGroupSanguin,
-          antecedents: data.clientAntecedents,
-          allergies: data.clientAllergies,
-          commentaire: "",
+      if (stepToSave === "client") {
+        // Just save client info
+        let clientId: number;
+        if (formData.isNewClient) {
+          const clientData: ClientFormData = {
+            CIN: formData.clientCIN,
+            nom: formData.clientNom,
+            prenom: formData.clientPrenom,
+            date_naissance: formData.clientDateNaissance,
+            adresse: formData.clientAdresse,
+            numero_telephone: formData.clientTelephone,
+            email: formData.clientEmail,
+            groupe_sanguin: formData.clientGroupSanguin,
+            antecedents: formData.clientAntecedents,
+            allergies: formData.clientAllergies,
+            commentaire: "",
+            Cree_par: currentUser.CIN,
+          };
+          const newClient = await ClientsService.create(clientData);
+          clientId = newClient.id;
+          draftData.clientId = newClient.id;
+        } else {
+          clientId = formData.selectedClientId!;
+          draftData.clientId = clientId;
+        }
+      } else if (stepToSave === "appointment") {
+        // Save client first if needed, then appointment
+        let clientId: number;
+        if (formData.isNewClient) {
+          const clientData: ClientFormData = {
+            CIN: formData.clientCIN,
+            nom: formData.clientNom,
+            prenom: formData.clientPrenom,
+            date_naissance: formData.clientDateNaissance,
+            adresse: formData.clientAdresse,
+            numero_telephone: formData.clientTelephone,
+            email: formData.clientEmail,
+            groupe_sanguin: formData.clientGroupSanguin,
+            antecedents: formData.clientAntecedents,
+            allergies: formData.clientAllergies,
+            commentaire: "",
+            Cree_par: currentUser.CIN,
+          };
+          const newClient = await ClientsService.create(clientData);
+          clientId = newClient.id;
+          draftData.clientId = newClient.id;
+        } else {
+          clientId = formData.selectedClientId!;
+          draftData.clientId = clientId;
+        }
+
+        // Create appointment
+        const appointmentData: AppointmentFormData = {
+          client_id: clientId,
+          CIN: formData.clientCIN,
+          sujet: formData.appointmentSubject,
+          date_rendez_vous: new Date(formData.appointmentDate).toISOString(),
           Cree_par: currentUser.CIN,
+          status: formData.appointmentStatus,
+          Cabinet: formData.appointmentCabinet,
+          soin_id: parseInt(formData.appointmentSoinId),
         };
-        const newClient = await ClientsService.create(clientData);
-        clientId = newClient.id;
-      } else {
-        clientId = data.selectedClientId!;
+        const newAppointment =
+          await AppointmentsService.create(appointmentData);
+        draftData.appointmentId = newAppointment.id;
+      } else if (stepToSave === "products") {
+        // Ensure client and appointment exist, then save as draft with products
+        let clientId: number;
+        if (!currentDraft?.clientId) {
+          if (formData.isNewClient) {
+            const clientData: ClientFormData = {
+              CIN: formData.clientCIN,
+              nom: formData.clientNom,
+              prenom: formData.clientPrenom,
+              date_naissance: formData.clientDateNaissance,
+              adresse: formData.clientAdresse,
+              numero_telephone: formData.clientTelephone,
+              email: formData.clientEmail,
+              groupe_sanguin: formData.clientGroupSanguin,
+              antecedents: formData.clientAntecedents,
+              allergies: formData.clientAllergies,
+              commentaire: "",
+              Cree_par: currentUser.CIN,
+            };
+            const newClient = await ClientsService.create(clientData);
+            clientId = newClient.id;
+            draftData.clientId = newClient.id;
+          } else {
+            clientId = formData.selectedClientId!;
+            draftData.clientId = clientId;
+          }
+        } else {
+          clientId = currentDraft.clientId;
+          draftData.clientId = clientId;
+        }
+
+        if (!currentDraft?.appointmentId) {
+          const appointmentData: AppointmentFormData = {
+            client_id: clientId,
+            CIN: formData.clientCIN,
+            sujet: formData.appointmentSubject,
+            date_rendez_vous: new Date(formData.appointmentDate).toISOString(),
+            Cree_par: currentUser.CIN,
+            status: formData.appointmentStatus,
+            Cabinet: formData.appointmentCabinet,
+            soin_id: parseInt(formData.appointmentSoinId),
+          };
+          const newAppointment =
+            await AppointmentsService.create(appointmentData);
+          draftData.appointmentId = newAppointment.id;
+        } else {
+          draftData.appointmentId = currentDraft.appointmentId;
+        }
+      } else if (stepToSave === "invoice") {
+        // Create full workflow up to invoice
+        let clientId: number;
+        if (!currentDraft?.clientId) {
+          if (formData.isNewClient) {
+            const clientData: ClientFormData = {
+              CIN: formData.clientCIN,
+              nom: formData.clientNom,
+              prenom: formData.clientPrenom,
+              date_naissance: formData.clientDateNaissance,
+              adresse: formData.clientAdresse,
+              numero_telephone: formData.clientTelephone,
+              email: formData.clientEmail,
+              groupe_sanguin: formData.clientGroupSanguin,
+              antecedents: formData.clientAntecedents,
+              allergies: formData.clientAllergies,
+              commentaire: "",
+              Cree_par: currentUser.CIN,
+            };
+            const newClient = await ClientsService.create(clientData);
+            clientId = newClient.id;
+            draftData.clientId = newClient.id;
+          } else {
+            clientId = formData.selectedClientId!;
+            draftData.clientId = clientId;
+          }
+        } else {
+          clientId = currentDraft.clientId;
+          draftData.clientId = clientId;
+        }
+
+        if (!currentDraft?.appointmentId) {
+          const appointmentData: AppointmentFormData = {
+            client_id: clientId,
+            CIN: formData.clientCIN,
+            sujet: formData.appointmentSubject,
+            date_rendez_vous: new Date(formData.appointmentDate).toISOString(),
+            Cree_par: currentUser.CIN,
+            status: formData.appointmentStatus,
+            Cabinet: formData.appointmentCabinet,
+            soin_id: parseInt(formData.appointmentSoinId),
+          };
+          const newAppointment =
+            await AppointmentsService.create(appointmentData);
+          draftData.appointmentId = newAppointment.id;
+        } else {
+          draftData.appointmentId = currentDraft.appointmentId;
+        }
+
+        // Create invoice
+        const invoiceData: FactureFormData = {
+          CIN: formData.clientCIN,
+          date: new Date(formData.invoiceDate).toISOString(),
+          statut: formData.invoiceStatut,
+          notes: formData.invoiceNotes,
+          Cree_par: currentUser.CIN,
+          items: formData.invoiceItems,
+          date_paiement: undefined,
+          methode_paiement: "",
+        };
+        const newInvoice = await InvoicesService.create(invoiceData);
+        draftData.invoiceId = newInvoice.id;
+      } else if (stepToSave === "payment") {
+        // Complete the entire workflow
+        let clientId: number;
+        if (!currentDraft?.clientId) {
+          if (formData.isNewClient) {
+            const clientData: ClientFormData = {
+              CIN: formData.clientCIN,
+              nom: formData.clientNom,
+              prenom: formData.clientPrenom,
+              date_naissance: formData.clientDateNaissance,
+              adresse: formData.clientAdresse,
+              numero_telephone: formData.clientTelephone,
+              email: formData.clientEmail,
+              groupe_sanguin: formData.clientGroupSanguin,
+              antecedents: formData.clientAntecedents,
+              allergies: formData.clientAllergies,
+              commentaire: "",
+              Cree_par: currentUser.CIN,
+            };
+            const newClient = await ClientsService.create(clientData);
+            clientId = newClient.id;
+            draftData.clientId = newClient.id;
+          } else {
+            clientId = formData.selectedClientId!;
+            draftData.clientId = clientId;
+          }
+        } else {
+          clientId = currentDraft.clientId;
+          draftData.clientId = clientId;
+        }
+
+        if (!currentDraft?.appointmentId) {
+          const appointmentData: AppointmentFormData = {
+            client_id: clientId,
+            CIN: formData.clientCIN,
+            sujet: formData.appointmentSubject,
+            date_rendez_vous: new Date(formData.appointmentDate).toISOString(),
+            Cree_par: currentUser.CIN,
+            status: formData.appointmentStatus,
+            Cabinet: formData.appointmentCabinet,
+            soin_id: parseInt(formData.appointmentSoinId),
+          };
+          const newAppointment =
+            await AppointmentsService.create(appointmentData);
+          draftData.appointmentId = newAppointment.id;
+        } else {
+          draftData.appointmentId = currentDraft.appointmentId;
+        }
+
+        const invoiceData: FactureFormData = {
+          CIN: formData.clientCIN,
+          date: new Date(formData.invoiceDate).toISOString(),
+          statut: formData.invoiceStatut,
+          notes: formData.invoiceNotes,
+          Cree_par: currentUser.CIN,
+          items: formData.invoiceItems,
+          date_paiement: formData.paymentMethod
+            ? new Date(formData.paymentDate).toISOString()
+            : undefined,
+          methode_paiement: formData.paymentMethod,
+          cheque_numero: formData.chequeNumero,
+          cheque_banque: formData.chequeBanque,
+          cheque_date_tirage: formData.chequeDateTirage,
+        };
+        const newInvoice = !currentDraft?.invoiceId
+          ? await InvoicesService.create(invoiceData)
+          : await InvoicesService.update(
+              currentDraft.invoiceId,
+              invoiceData as any,
+            );
+        draftData.invoiceId = newInvoice.id;
       }
 
-      // Step 2: Create appointment
-      const appointmentData: AppointmentFormData = {
-        client_id: clientId,
-        CIN: data.clientCIN,
-        sujet: data.appointmentSubject,
-        date_rendez_vous: new Date(data.appointmentDate).toISOString(),
-        Cree_par: currentUser.CIN,
-        status: data.appointmentStatus,
-        Cabinet: data.appointmentCabinet,
-        soin_id: parseInt(data.appointmentSoinId),
-      };
-      const newAppointment = await AppointmentsService.create(appointmentData);
+      saveDraft(draftData);
 
-      // Step 4: Create invoice
-      const invoiceData: FactureFormData = {
-        CIN: data.clientCIN,
-        date: new Date(data.invoiceDate).toISOString(),
-        statut: data.invoiceStatut,
-        notes: data.invoiceNotes,
-        Cree_par: currentUser.CIN,
-        items: data.invoiceItems,
-        date_paiement: data.paymentMethod
-          ? new Date(data.paymentDate).toISOString()
-          : undefined,
-        methode_paiement: data.paymentMethod,
-        cheque_numero: data.chequeNumero,
-        cheque_banque: data.chequeBanque,
-        cheque_date_tirage: data.chequeDateTirage,
-      };
-      const newInvoice = await InvoicesService.create(invoiceData);
+      toast({
+        title: "Succès",
+        description: `Étape sauvegardée. Vous pouvez continuer plus tard.`,
+      });
+
+      setIsDrawerOpen(false);
+      await loadInitialData();
+    } catch (error) {
+      console.error("Error saving draft:", error);
+      toast({
+        title: "Erreur",
+        description: "Échec de la sauvegarde. Veuillez réessayer.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const onSubmit = async (data: WorkflowFormData) => {
+    try {
+      setIsLoading(true);
+      await saveAndQuitStep("payment");
+      // Update draft to mark as completed
+      if (currentDraft) {
+        const completedDraft: WorkflowDraft = {
+          ...currentDraft,
+          stage: "completed",
+          updatedAt: new Date().toISOString(),
+        };
+        saveDraft(completedDraft);
+      }
 
       toast({
         title: "Succès",
         description:
-          "Flux de travail complété avec succès ! Client, rendez-vous et facture créés.",
+          "Flux de travail finalisé avec succès ! Client, rendez-vous et facture créés.",
       });
 
       // Reload data
@@ -434,6 +747,7 @@ export default function Workflow() {
       // Reset form
       form.reset();
       setCurrentStep(1);
+      setCurrentDraft(null);
       setIsDrawerOpen(false);
     } catch (error) {
       console.error("Error submitting workflow:", error);
@@ -672,9 +986,79 @@ export default function Workflow() {
           </CardContent>
         </Card>
 
+        {/* Draft Workflows Section */}
+        {workflowDrafts.length > 0 && (
+          <Card className="bg-amber-50 border-amber-200">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-amber-600" />
+                Flux en cours ({workflowDrafts.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {workflowDrafts.map((draft) => {
+                  const stageLabels: Record<string, string> = {
+                    client: "Client sélectionné",
+                    appointment: "Rendez-vous créé",
+                    products: "Produits sélectionnés",
+                    invoice: "Facture créée",
+                    payment: "Paiement en attente",
+                    completed: "Complété",
+                  };
+                  return (
+                    <div
+                      key={draft.id}
+                      className="p-4 border border-amber-200 rounded-lg bg-white hover:bg-amber-50 transition-colors"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-semibold">
+                            {draft.formData.clientNom}{" "}
+                            {draft.formData.clientPrenom}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Étape: {stageLabels[draft.stage]}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Modifié:{" "}
+                            {new Date(draft.updatedAt).toLocaleDateString(
+                              "fr-FR",
+                            )}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setCurrentDraft(draft);
+                            form.reset(draft.formData as any);
+                            setCurrentStep(
+                              {
+                                client: 1,
+                                appointment: 2,
+                                products: 3,
+                                invoice: 4,
+                                payment: 5,
+                                completed: 5,
+                              }[draft.stage],
+                            );
+                            setIsDrawerOpen(true);
+                          }}
+                        >
+                          Continuer
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Results Count */}
         <div className="text-sm text-muted-foreground">
-          {filteredWorkflows.length} enregistrement(s) trouvé(s)
+          {filteredWorkflows.length} flux complété(s) trouvé(s)
         </div>
 
         {/* Table */}
@@ -784,6 +1168,7 @@ export default function Workflow() {
                             variant="ghost"
                             size="sm"
                             title="Voir les détails"
+                            onClick={() => handleViewWorkflow(workflow)}
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
@@ -793,6 +1178,8 @@ export default function Workflow() {
                             size="sm"
                             className="text-destructive hover:text-destructive"
                             title="Supprimer"
+                            onClick={() => handleDeleteWorkflow(workflow)}
+                            disabled={isLoading}
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -806,6 +1193,162 @@ export default function Workflow() {
           </div>
         </Card>
       </div>
+
+      {/* Workflow Details Modal */}
+      <Dialog
+        open={showWorkflowDetailsModal}
+        onOpenChange={setShowWorkflowDetailsModal}
+      >
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Détails du Flux de Travail
+            </DialogTitle>
+            <DialogDescription>
+              Flux complet pour {selectedWorkflowDetails?.client.prenom}{" "}
+              {selectedWorkflowDetails?.client.nom}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedWorkflowDetails && (
+            <div className="space-y-6">
+              {/* Client Info */}
+              <div className="border border-border rounded-lg p-4 bg-secondary/5">
+                <h3 className="font-semibold mb-3 flex items-center gap-2">
+                  <User className="h-4 w-4" /> Informations Client
+                </h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Nom</p>
+                    <p className="font-medium">
+                      {selectedWorkflowDetails.client.prenom}{" "}
+                      {selectedWorkflowDetails.client.nom}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">CIN</p>
+                    <p className="font-medium">
+                      {selectedWorkflowDetails.client.CIN}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Email</p>
+                    <p className="font-medium">
+                      {selectedWorkflowDetails.client.email}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Téléphone</p>
+                    <p className="font-medium">
+                      {selectedWorkflowDetails.client.numero_telephone}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Appointment Info */}
+              <div className="border border-border rounded-lg p-4 bg-secondary/5">
+                <h3 className="font-semibold mb-3 flex items-center gap-2">
+                  <Calendar className="h-4 w-4" /> Rendez-vous
+                </h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Date et Heure</p>
+                    <p className="font-medium">
+                      {new Date(
+                        selectedWorkflowDetails.appointment.date_rendez_vous,
+                      ).toLocaleDateString("fr-FR", {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Statut</p>
+                    <p className="font-medium capitalize">
+                      {selectedWorkflowDetails.appointment.status}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Cabinet</p>
+                    <p className="font-medium">
+                      {selectedWorkflowDetails.appointment.Cabinet}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Sujet</p>
+                    <p className="font-medium">
+                      {selectedWorkflowDetails.appointment.sujet}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Invoice Info */}
+              <div className="border border-border rounded-lg p-4 bg-secondary/5">
+                <h3 className="font-semibold mb-3 flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" /> Facture
+                </h3>
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <p className="text-muted-foreground">Montant Total</p>
+                    <p className="font-semibold text-primary">
+                      €{selectedWorkflowDetails.invoice.prix_total.toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="flex justify-between">
+                    <p className="text-muted-foreground">Méthode Paiement</p>
+                    <p className="font-medium">
+                      {selectedWorkflowDetails.invoice.methode_paiement ||
+                        "Non spécifiée"}
+                    </p>
+                  </div>
+                  <div className="flex justify-between">
+                    <p className="text-muted-foreground">Statut Facture</p>
+                    <Badge>
+                      {
+                        paymentStatusLabels[
+                          selectedWorkflowDetails.invoice.statut
+                        ]
+                      }
+                    </Badge>
+                  </div>
+                  {selectedWorkflowDetails.invoice.items &&
+                    selectedWorkflowDetails.invoice.items.length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-border">
+                        <p className="font-semibold mb-2">
+                          Produits & Services
+                        </p>
+                        <div className="space-y-2">
+                          {selectedWorkflowDetails.invoice.items.map(
+                            (item, idx) => (
+                              <div key={idx} className="flex justify-between">
+                                <span>
+                                  {item.nom_bien} (x{item.quantite})
+                                </span>
+                                <span className="font-medium">
+                                  €
+                                  {(item.quantite * item.prix_unitaire).toFixed(
+                                    2,
+                                  )}
+                                </span>
+                              </div>
+                            ),
+                          )}
+                        </div>
+                      </div>
+                    )}
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Products Modal */}
       <Dialog open={showProductsModal} onOpenChange={setShowProductsModal}>
@@ -867,7 +1410,7 @@ export default function Workflow() {
       <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
         <SheetContent
           side="right"
-          className="w-full sm:w-[90%] md:w-[85%] lg:w-[70%] overflow-y-auto"
+          className="w-full sm:w-[98%] md:w-[95%] lg:w-[85%] xl:w-[80%] overflow-y-auto"
         >
           <SheetHeader>
             <SheetTitle>Créer un nouveau flux de travail</SheetTitle>
@@ -1157,19 +1700,17 @@ export default function Workflow() {
                       <CardTitle>Créer un Rendez-vous</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <FormField
-                        control={form.control}
-                        name="appointmentDate"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Date et Heure</FormLabel>
-                            <FormControl>
-                              <Input type="datetime-local" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      <div>
+                        <FormLabel className="mb-3 block">
+                          Date et Heure
+                        </FormLabel>
+                        <TimeSlotPicker
+                          value={form.getValues("appointmentDate")}
+                          onChange={(datetime) =>
+                            form.setValue("appointmentDate", datetime)
+                          }
+                        />
+                      </div>
                       <FormField
                         control={form.control}
                         name="appointmentSubject"
@@ -1573,42 +2114,78 @@ export default function Workflow() {
                 )}
 
                 {/* Navigation Buttons */}
-                <div className="flex justify-between gap-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
-                    disabled={currentStep === 1}
-                  >
-                    <ChevronLeft className="w-4 h-4 mr-2" /> Retour
-                  </Button>
-
-                  {currentStep < 5 ? (
+                <div className="space-y-3">
+                  <div className="flex justify-between gap-4">
                     <Button
                       type="button"
-                      onClick={() => setCurrentStep(currentStep + 1)}
-                      disabled={!canProceedToNextStep() || isLoading}
+                      variant="outline"
+                      onClick={() =>
+                        setCurrentStep(Math.max(1, currentStep - 1))
+                      }
+                      disabled={currentStep === 1}
                     >
-                      Suivant <ChevronRight className="w-4 h-4 ml-2" />
+                      <ChevronLeft className="w-4 h-4 mr-2" /> Retour
                     </Button>
-                  ) : (
-                    <Button
-                      type="submit"
-                      disabled={!canProceedToNextStep() || isLoading}
-                      className="bg-primary hover:bg-primary/90"
-                    >
-                      {isLoading ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2" />
-                          Création en cours...
-                        </>
-                      ) : (
-                        <>
-                          <Check className="w-4 h-4 mr-2" /> Terminer
-                        </>
-                      )}
-                    </Button>
-                  )}
+
+                    {currentStep < 5 ? (
+                      <Button
+                        type="button"
+                        onClick={() => setCurrentStep(currentStep + 1)}
+                        disabled={!canProceedToNextStep() || isLoading}
+                      >
+                        Suivant <ChevronRight className="w-4 h-4 ml-2" />
+                      </Button>
+                    ) : (
+                      <Button
+                        type="submit"
+                        disabled={!canProceedToNextStep() || isLoading}
+                        className="bg-primary hover:bg-primary/90"
+                      >
+                        {isLoading ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2" />
+                            Finalisation en cours...
+                          </>
+                        ) : (
+                          <>
+                            <Check className="w-4 h-4 mr-2" /> Finaliser
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Save and Quit Button */}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      const stageMap = {
+                        1: "client" as const,
+                        2: "appointment" as const,
+                        3: "products" as const,
+                        4: "invoice" as const,
+                        5: "payment" as const,
+                      };
+                      saveAndQuitStep(
+                        stageMap[currentStep as keyof typeof stageMap],
+                      );
+                    }}
+                    disabled={isLoading}
+                    className="w-full"
+                  >
+                    {isLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-foreground mr-2" />
+                        Enregistrement...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4 mr-2" /> Enregistrer et
+                        Quitter
+                      </>
+                    )}
+                  </Button>
                 </div>
               </form>
             </Form>

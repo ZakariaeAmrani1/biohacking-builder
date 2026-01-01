@@ -64,6 +64,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import TimeSlotPicker from "@/components/appointments/TimeSlotPicker";
 import {
   ClientsService,
   Client,

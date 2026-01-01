@@ -107,7 +107,6 @@ export default function Workflow() {
   const [clients, setClients] = useState<Client[]>([]);
   const [soins, setSoins] = useState<Soin[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [employees, setEmployees] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 

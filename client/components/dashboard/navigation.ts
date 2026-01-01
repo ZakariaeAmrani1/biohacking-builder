@@ -12,6 +12,7 @@ import {
   DollarSign,
   TrendingUp,
   Warehouse,
+  GitBranch,
 } from "lucide-react";
 
 export interface NavChildItem {

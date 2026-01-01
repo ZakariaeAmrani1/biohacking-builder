@@ -1192,6 +1192,156 @@ export default function Workflow() {
         </Card>
       </div>
 
+      {/* Workflow Details Modal */}
+      <Dialog
+        open={showWorkflowDetailsModal}
+        onOpenChange={setShowWorkflowDetailsModal}
+      >
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Détails du Flux de Travail
+            </DialogTitle>
+            <DialogDescription>
+              Flux complet pour {selectedWorkflowDetails?.client.prenom}{" "}
+              {selectedWorkflowDetails?.client.nom}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedWorkflowDetails && (
+            <div className="space-y-6">
+              {/* Client Info */}
+              <div className="border border-border rounded-lg p-4 bg-secondary/5">
+                <h3 className="font-semibold mb-3 flex items-center gap-2">
+                  <User className="h-4 w-4" /> Informations Client
+                </h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Nom</p>
+                    <p className="font-medium">
+                      {selectedWorkflowDetails.client.prenom}{" "}
+                      {selectedWorkflowDetails.client.nom}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">CIN</p>
+                    <p className="font-medium">
+                      {selectedWorkflowDetails.client.CIN}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Email</p>
+                    <p className="font-medium">
+                      {selectedWorkflowDetails.client.email}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Téléphone</p>
+                    <p className="font-medium">
+                      {selectedWorkflowDetails.client.numero_telephone}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Appointment Info */}
+              <div className="border border-border rounded-lg p-4 bg-secondary/5">
+                <h3 className="font-semibold mb-3 flex items-center gap-2">
+                  <Calendar className="h-4 w-4" /> Rendez-vous
+                </h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Date et Heure</p>
+                    <p className="font-medium">
+                      {new Date(
+                        selectedWorkflowDetails.appointment.date_rendez_vous,
+                      ).toLocaleDateString("fr-FR", {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Statut</p>
+                    <p className="font-medium capitalize">
+                      {selectedWorkflowDetails.appointment.status}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Cabinet</p>
+                    <p className="font-medium">
+                      {selectedWorkflowDetails.appointment.Cabinet}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Sujet</p>
+                    <p className="font-medium">
+                      {selectedWorkflowDetails.appointment.sujet}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Invoice Info */}
+              <div className="border border-border rounded-lg p-4 bg-secondary/5">
+                <h3 className="font-semibold mb-3 flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" /> Facture
+                </h3>
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <p className="text-muted-foreground">Montant Total</p>
+                    <p className="font-semibold text-primary">
+                      €{selectedWorkflowDetails.invoice.prix_total.toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="flex justify-between">
+                    <p className="text-muted-foreground">Méthode Paiement</p>
+                    <p className="font-medium">
+                      {selectedWorkflowDetails.invoice.methode_paiement ||
+                        "Non spécifiée"}
+                    </p>
+                  </div>
+                  <div className="flex justify-between">
+                    <p className="text-muted-foreground">Statut Facture</p>
+                    <Badge>
+                      {paymentStatusLabels[selectedWorkflowDetails.invoice.statut]}
+                    </Badge>
+                  </div>
+                  {selectedWorkflowDetails.invoice.items &&
+                    selectedWorkflowDetails.invoice.items.length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-border">
+                        <p className="font-semibold mb-2">Produits & Services</p>
+                        <div className="space-y-2">
+                          {selectedWorkflowDetails.invoice.items.map(
+                            (item, idx) => (
+                              <div key={idx} className="flex justify-between">
+                                <span>
+                                  {item.nom_bien} (x{item.quantite})
+                                </span>
+                                <span className="font-medium">
+                                  €
+                                  {(
+                                    item.quantite * item.prix_unitaire
+                                  ).toFixed(2)}
+                                </span>
+                              </div>
+                            ),
+                          )}
+                        </div>
+                      </div>
+                    )}
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Products Modal */}
       <Dialog open={showProductsModal} onOpenChange={setShowProductsModal}>
         <DialogContent className="max-w-2xl">

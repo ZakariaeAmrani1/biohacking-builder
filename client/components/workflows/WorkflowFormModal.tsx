@@ -72,6 +72,7 @@ export default function WorkflowFormModal({
   const [currentStep, setCurrentStep] = useState<Step>(
     (initialStep as Step) || 1,
   );
+  const [startingStep, setStartingStep] = useState<Step>((initialStep as Step) || 1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
 

@@ -175,19 +175,16 @@ export default function Workflow() {
   // Search and filter states
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("tous");
-  const [filterPaymentMethod, setFilterPaymentMethod] = useState<string>(
-    "tous"
-  );
-  const [filterPaymentStatus, setFilterPaymentStatus] = useState<string>(
-    "tous"
-  );
+  const [filterPaymentMethod, setFilterPaymentMethod] =
+    useState<string>("tous");
+  const [filterPaymentStatus, setFilterPaymentStatus] =
+    useState<string>("tous");
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo] = useState("");
 
   // Product details modal
-  const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowRecord | null>(
-    null
-  );
+  const [selectedWorkflow, setSelectedWorkflow] =
+    useState<WorkflowRecord | null>(null);
   const [showProductsModal, setShowProductsModal] = useState(false);
 
   const { toast } = useToast();
@@ -240,14 +237,19 @@ export default function Workflow() {
   const loadInitialData = async () => {
     try {
       setIsLoading(true);
-      const [clientsData, soinsData, productsData, appointmentsData, invoicesData] =
-        await Promise.all([
-          ClientsService.getAll(),
-          SoinsService.getAll(),
-          ProductsService.getAll(),
-          AppointmentsService.getAll(),
-          InvoicesService.getAll(),
-        ]);
+      const [
+        clientsData,
+        soinsData,
+        productsData,
+        appointmentsData,
+        invoicesData,
+      ] = await Promise.all([
+        ClientsService.getAll(),
+        SoinsService.getAll(),
+        ProductsService.getAll(),
+        AppointmentsService.getAll(),
+        InvoicesService.getAll(),
+      ]);
 
       setClients(clientsData);
       setSoins(soinsData);
@@ -308,7 +310,9 @@ export default function Workflow() {
     let itemType = itemData.itemType;
 
     if (itemType === "produit") {
-      selectedItem = products.find((p) => p.id === parseInt(itemData.productId));
+      selectedItem = products.find(
+        (p) => p.id === parseInt(itemData.productId),
+      );
     } else {
       selectedItem = soins.find((s) => s.id === parseInt(itemData.productId));
     }
@@ -324,8 +328,7 @@ export default function Workflow() {
 
     const newItem: FactureItem = {
       id_bien: parseInt(itemData.productId),
-      type_bien:
-        itemType === "produit" ? TypeBien.PRODUIT : TypeBien.SOIN,
+      type_bien: itemType === "produit" ? TypeBien.PRODUIT : TypeBien.SOIN,
       quantite: itemData.quantity,
       prix_unitaire: selectedItem.prix,
       nom_bien: selectedItem.Nom,
@@ -342,7 +345,7 @@ export default function Workflow() {
     const currentItems = form.getValues("invoiceItems") || [];
     form.setValue(
       "invoiceItems",
-      currentItems.filter((_, i) => i !== index)
+      currentItems.filter((_, i) => i !== index),
     );
   };
 
@@ -350,7 +353,7 @@ export default function Workflow() {
     const items = form.getValues("invoiceItems") || [];
     const subtotal = items.reduce(
       (total, item) => total + item.prix_unitaire * item.quantite,
-      0
+      0,
     );
     const tva = subtotal * 0.2;
     return {
@@ -436,7 +439,8 @@ export default function Workflow() {
       console.error("Error submitting workflow:", error);
       toast({
         title: "Erreur",
-        description: "Échec de la création du flux de travail. Veuillez réessayer.",
+        description:
+          "Échec de la création du flux de travail. Veuillez réessayer.",
         variant: "destructive",
       });
     } finally {
@@ -474,9 +478,7 @@ export default function Workflow() {
         return form.getValues("invoiceDate");
       }
       case 5: {
-        return (
-          form.getValues("paymentDate") && form.getValues("paymentMethod")
-        );
+        return form.getValues("paymentDate") && form.getValues("paymentMethod");
       }
       default:
         return true;
@@ -493,8 +495,7 @@ export default function Workflow() {
         workflow.client.email.toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchesStatus =
-        filterStatus === "tous" ||
-        workflow.appointment.status === filterStatus;
+        filterStatus === "tous" || workflow.appointment.status === filterStatus;
 
       const matchesPaymentMethod =
         filterPaymentMethod === "tous" ||
@@ -616,13 +617,9 @@ export default function Workflow() {
                   <SelectItem value={FactureStatut.BROUILLON}>
                     Brouillon
                   </SelectItem>
-                  <SelectItem value={FactureStatut.ENVOYEE}>
-                    Envoyée
-                  </SelectItem>
+                  <SelectItem value={FactureStatut.ENVOYEE}>Envoyée</SelectItem>
                   <SelectItem value={FactureStatut.PAYEE}>Payée</SelectItem>
-                  <SelectItem value={FactureStatut.ANNULEE}>
-                    Annulée
-                  </SelectItem>
+                  <SelectItem value={FactureStatut.ANNULEE}>Annulée</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -720,7 +717,7 @@ export default function Workflow() {
                       </TableCell>
                       <TableCell>
                         {new Date(
-                          workflow.appointment.date_rendez_vous
+                          workflow.appointment.date_rendez_vous,
                         ).toLocaleDateString("fr-FR", {
                           year: "numeric",
                           month: "2-digit",
@@ -737,7 +734,7 @@ export default function Workflow() {
                             statusColors[
                               workflow.appointment
                                 .status as keyof typeof statusColors
-                            ]
+                            ],
                           )}
                         >
                           {statusLabels[workflow.appointment.status!]}
@@ -765,15 +762,14 @@ export default function Workflow() {
                         <Badge variant="secondary">
                           {paymentMethodLabels[
                             workflow.invoice.methode_paiement ||
-                              "cash" as keyof typeof paymentMethodLabels
+                              ("cash" as keyof typeof paymentMethodLabels)
                           ] || "Non spécifié"}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge
                           variant={
-                            workflow.invoice.statut ===
-                            FactureStatut.PAYEE
+                            workflow.invoice.statut === FactureStatut.PAYEE
                               ? "default"
                               : "outline"
                           }
@@ -824,8 +820,8 @@ export default function Workflow() {
 
           {selectedWorkflow && (
             <div className="space-y-4">
-              {(!selectedWorkflow.invoice.items ||
-                selectedWorkflow.invoice.items.length === 0) ? (
+              {!selectedWorkflow.invoice.items ||
+              selectedWorkflow.invoice.items.length === 0 ? (
                 <p className="text-muted-foreground text-sm">
                   Aucun produit dans cette facture
                 </p>
@@ -869,12 +865,15 @@ export default function Workflow() {
 
       {/* Form Drawer */}
       <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-        <SheetContent side="right" className="w-full sm:w-[90%] md:w-[85%] lg:w-[70%] overflow-y-auto">
+        <SheetContent
+          side="right"
+          className="w-full sm:w-[90%] md:w-[85%] lg:w-[70%] overflow-y-auto"
+        >
           <SheetHeader>
             <SheetTitle>Créer un nouveau flux de travail</SheetTitle>
             <SheetDescription>
-              Complétez chaque étape pour créer un client, un rendez-vous et
-              une facture
+              Complétez chaque étape pour créer un client, un rendez-vous et une
+              facture
             </SheetDescription>
           </SheetHeader>
 
@@ -945,7 +944,10 @@ export default function Workflow() {
                               <FormItem>
                                 <FormLabel>CIN</FormLabel>
                                 <FormControl>
-                                  <Input placeholder="Entrez le CIN" {...field} />
+                                  <Input
+                                    placeholder="Entrez le CIN"
+                                    {...field}
+                                  />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1262,9 +1264,7 @@ export default function Workflow() {
                                 <SelectItem value="confirmé">
                                   Confirmé
                                 </SelectItem>
-                                <SelectItem value="terminé">
-                                  Terminé
-                                </SelectItem>
+                                <SelectItem value="terminé">Terminé</SelectItem>
                                 <SelectItem value="annulé">Annulé</SelectItem>
                               </SelectContent>
                             </Select>
@@ -1280,7 +1280,9 @@ export default function Workflow() {
                 {currentStep === 3 && (
                   <Card className="bg-white">
                     <CardHeader>
-                      <CardTitle>Sélectionner les Produits et Services</CardTitle>
+                      <CardTitle>
+                        Sélectionner les Produits et Services
+                      </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-6">
                       <div className="space-y-4">
@@ -1297,7 +1299,9 @@ export default function Workflow() {
 
                         {(form.getValues("invoiceItems") || []).length > 0 && (
                           <div className="space-y-3">
-                            <p className="text-sm font-medium">Éléments Ajoutés</p>
+                            <p className="text-sm font-medium">
+                              Éléments Ajoutés
+                            </p>
                             <div className="space-y-2 max-h-96 overflow-y-auto">
                               {(form.getValues("invoiceItems") || []).map(
                                 (item, index) => (
@@ -1326,7 +1330,7 @@ export default function Workflow() {
                                       <Trash2 className="w-4 h-4 text-destructive" />
                                     </Button>
                                   </div>
-                                )
+                                ),
                               )}
                             </div>
                           </div>
@@ -1436,7 +1440,9 @@ export default function Workflow() {
                                     </span>
                                   </div>
                                   <div className="border-t border-border pt-2 mt-2 flex justify-between">
-                                    <span className="font-semibold">Total:</span>
+                                    <span className="font-semibold">
+                                      Total:
+                                    </span>
                                     <span className="font-bold text-primary">
                                       €{total.toFixed(2)}
                                     </span>
@@ -1614,11 +1620,7 @@ export default function Workflow() {
 }
 
 // Helper Component for Client Type Selection
-function ClientTypeSelector({
-  form,
-}: {
-  form: any;
-}) {
+function ClientTypeSelector({ form }: { form: any }) {
   const isNewClient = form.watch("isNewClient");
 
   return (
@@ -1671,7 +1673,7 @@ function ProductItemSelector({
   }) => void;
 }) {
   const [selectedType, setSelectedType] = useState<"produit" | "soin">(
-    "produit"
+    "produit",
   );
   const [selectedId, setSelectedId] = useState("");
   const [quantity, setQuantity] = useState(1);

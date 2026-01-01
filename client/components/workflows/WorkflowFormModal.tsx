@@ -137,6 +137,8 @@ export default function WorkflowFormModal({
       const step = (initialStep as Step) || 1;
       setCurrentStep(step);
       setStartingStep(step);
+      setCreatedAppointmentId(null);
+      setErrors([]);
     }
   }, [isOpen, initialStep]);
 

@@ -1166,6 +1166,7 @@ export default function Workflow() {
                             variant="ghost"
                             size="sm"
                             title="Voir les détails"
+                            onClick={() => handleViewWorkflow(workflow)}
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
@@ -1175,6 +1176,8 @@ export default function Workflow() {
                             size="sm"
                             className="text-destructive hover:text-destructive"
                             title="Supprimer"
+                            onClick={() => handleDeleteWorkflow(workflow)}
+                            disabled={isLoading}
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>

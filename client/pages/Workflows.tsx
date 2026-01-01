@@ -61,6 +61,7 @@ export default function Workflows() {
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowWithDetails | null>(null);
   const [editingWorkflow, setEditingWorkflow] = useState<Workflow | null>(null);
+  const [initialStep, setInitialStep] = useState<1 | 2 | 3>(1);
   const [deleteConfirm, setDeleteConfirm] = useState<Workflow | null>(null);
 
   const { toast } = useToast();

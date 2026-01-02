@@ -13,7 +13,10 @@ import {
   Trash2,
   Plus,
   ChevronRight,
+  FileText,
+  Hash,
 } from "lucide-react";
+import TimeSlotPicker from "@/components/appointments/TimeSlotPicker";
 import {
   Dialog,
   DialogContent,
@@ -83,6 +86,7 @@ import {
 import { ProductsService, Product } from "@/services/productsService";
 import { SoinsService, Soin } from "@/services/soinsService";
 import { AuthService } from "@/services/authService";
+import { OptionsService } from "@/services/optionsService";
 import { useToast } from "@/components/ui/use-toast";
 
 interface WorkflowFormModalProps {
@@ -93,7 +97,7 @@ interface WorkflowFormModalProps {
   initialStep?: number;
 }
 
-type Step = 1 | 2 | 3;
+type Step = 1 | 2 | 3 | 4;
 
 export default function WorkflowFormModal({
   isOpen,
@@ -146,9 +150,17 @@ export default function WorkflowFormModal({
   >(null);
 
   // Step 3: Invoice
-  const [invoiceFormData, setInvoiceFormData] =
-    useState<FactureFormData>(createEmptyFacture());
+  const [invoiceFormData, setInvoiceFormData] = useState<FactureFormData>(
+    () => {
+      const empty = createEmptyFacture();
+      return {
+        ...empty,
+        statut: FactureStatut.BROUILLON,
+      };
+    },
+  );
   const [invoiceItems, setInvoiceItems] = useState<FactureItem[]>([]);
+  const [bankNames, setBankNames] = useState<string[]>([]);
 
   // Load data on modal open
   useEffect(() => {
@@ -156,6 +168,9 @@ export default function WorkflowFormModal({
       loadClients();
       loadProducts();
       loadSoins();
+      OptionsService.getBankNames()
+        .then(setBankNames)
+        .catch(() => setBankNames([]));
       const step = (initialStep as Step) || 1;
       setCurrentStep(step);
       setErrors([]);
@@ -411,6 +426,70 @@ export default function WorkflowFormModal({
     setErrors([]);
   };
 
+  const handleNextFromStep3 = async () => {
+    if (invoiceItems.length === 0) {
+      setErrors(["Au moins un article est requis pour la facture"]);
+      return;
+    }
+
+    // Move to step 4
+    setErrors([]);
+    setCurrentStep(4);
+  };
+
+  const handleSaveAndQuitStep3 = async () => {
+    if (invoiceItems.length === 0) {
+      setErrors(["Au moins un article est requis pour la facture"]);
+      return;
+    }
+
+    const currentUser = AuthService.getCurrentUser();
+    const draftInvoiceData = {
+      ...invoiceFormData,
+      statut: FactureStatut.BROUILLON,
+      Cree_par: currentUser.CIN,
+      items: invoiceItems,
+    };
+
+    const validationErrors = validateFactureData(draftInvoiceData);
+    if (validationErrors.length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+
+      const invoice = await InvoicesService.create(draftInvoiceData);
+
+      let appointmentId = createdAppointmentId;
+      if (!appointmentId) {
+        const appointment =
+          await AppointmentsService.create(appointmentFormData);
+        appointmentId = appointment.id;
+      }
+
+      await WorkflowService.create({
+        client_CIN: appointmentFormData.CIN,
+        rendez_vous_id: appointmentId,
+        facture_id: invoice.id,
+        Cree_par: currentUser.CIN,
+      });
+
+      toast({
+        title: "Succès",
+        description: "Flux enregistré en brouillon",
+      });
+
+      onSubmit();
+      onClose();
+    } catch (error: any) {
+      setErrors([error.message || "Erreur lors de l'enregistrement du flux"]);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleCompleteWorkflow = async () => {
     if (invoiceItems.length === 0) {
       setErrors(["Au moins un article est requis pour la facture"]);
@@ -418,6 +497,28 @@ export default function WorkflowFormModal({
     }
 
     const currentUser = AuthService.getCurrentUser();
+
+    // Ensure payment details are present if status is PAYEE
+    if (invoiceFormData.statut === FactureStatut.PAYEE) {
+      if (!invoiceFormData.date_paiement) {
+        setErrors(["La date de paiement est requise"]);
+        return;
+      }
+      if (!invoiceFormData.methode_paiement) {
+        setErrors(["La méthode de paiement est requise"]);
+        return;
+      }
+      if (invoiceFormData.methode_paiement === "Par chéque") {
+        if (
+          !invoiceFormData.cheque_numero ||
+          !invoiceFormData.cheque_banque ||
+          !invoiceFormData.cheque_date_tirage
+        ) {
+          setErrors(["Les informations de chèque sont incomplètes"]);
+          return;
+        }
+      }
+    }
 
     const validationErrors = validateFactureData({
       ...invoiceFormData,
@@ -476,7 +577,7 @@ export default function WorkflowFormModal({
 
   const renderStepIndicator = () => (
     <div className="flex items-center justify-center gap-3 mb-6 px-6 py-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg border border-blue-100">
-      {[1, 2, 3].map((step) => (
+      {[1, 2, 3, 4].map((step) => (
         <div key={step} className="flex items-center gap-3">
           <div
             className={`flex h-10 w-10 items-center justify-center rounded-full font-semibold transition-all ${
@@ -493,8 +594,9 @@ export default function WorkflowFormModal({
             {step === 1 && "Patient"}
             {step === 2 && "Rendez-vous"}
             {step === 3 && "Facturation"}
+            {step === 4 && "Paiement"}
           </div>
-          {step < 3 && (
+          {step < 4 && (
             <div
               className={`h-1 w-12 rounded-full transition-all ${
                 step < currentStep ? "bg-green-500" : "bg-gray-200"
@@ -670,19 +772,42 @@ export default function WorkflowFormModal({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="new-patient-cin">CIN *</Label>
-                  <Input
-                    id="new-patient-cin"
-                    type="text"
-                    value={newPatientData.CIN || ""}
-                    onChange={(e) =>
-                      setNewPatientData((prev) => ({
-                        ...prev,
-                        CIN: e.target.value.toUpperCase(),
-                      }))
-                    }
-                    placeholder="Ex: B1234567"
-                    disabled={isSubmitting}
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="new-patient-cin"
+                      type="text"
+                      value={newPatientData.CIN || ""}
+                      onChange={(e) =>
+                        setNewPatientData((prev) => ({
+                          ...prev,
+                          CIN: e.target.value.toUpperCase(),
+                        }))
+                      }
+                      placeholder="Ex: B1234567"
+                      disabled={isSubmitting}
+                      className="font-mono"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const bytes = crypto.getRandomValues(new Uint8Array(6));
+                        let digits = "";
+                        for (let i = 0; i < bytes.length; i++) {
+                          digits += String(bytes[i] % 10);
+                        }
+                        setNewPatientData((prev) => ({
+                          ...prev,
+                          CIN: `BH${digits}`,
+                        }));
+                      }}
+                      disabled={isSubmitting}
+                      className="whitespace-nowrap"
+                    >
+                      Générer
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -771,12 +896,10 @@ export default function WorkflowFormModal({
           <Clock className="h-4 w-4" />
           Date et heure du rendez-vous *
         </Label>
-        <Input
-          id="appointment-date"
-          type="datetime-local"
+        <TimeSlotPicker
           value={appointmentFormData.date_rendez_vous}
-          onChange={(e) =>
-            handleAppointmentChange("date_rendez_vous", e.target.value)
+          onChange={(datetime) =>
+            handleAppointmentChange("date_rendez_vous", datetime)
           }
           disabled={isSubmitting}
         />
@@ -921,31 +1044,91 @@ export default function WorkflowFormModal({
                     <div className="space-y-3">
                       <div className="flex gap-2 items-start">
                         <div className="flex-1 space-y-2">
-                          <Select
-                            value={item.id_bien ? String(item.id_bien) : ""}
-                            onValueChange={(value) =>
-                              handleInvoiceItemChange(
-                                index,
-                                "id_bien",
-                                parseInt(value),
-                              )
-                            }
-                            disabled={isSubmitting}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Produit/Service" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {products.map((product) => (
-                                <SelectItem
-                                  key={product.id}
-                                  value={String(product.id)}
-                                >
-                                  {product.Nom} - {product.prix}DH
+                          <div className="space-y-1">
+                            <Label className="text-xs">Type d'article</Label>
+                            <Select
+                              value={item.type_bien}
+                              onValueChange={(value) => {
+                                handleInvoiceItemChange(
+                                  index,
+                                  "type_bien",
+                                  value as TypeBien,
+                                );
+                                handleInvoiceItemChange(index, "id_bien", 0);
+                              }}
+                              disabled={isSubmitting}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value={TypeBien.PRODUIT}>
+                                  <div className="flex items-center gap-2">
+                                    <Package className="h-4 w-4" />
+                                    Produit
+                                  </div>
                                 </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                                <SelectItem value={TypeBien.SOIN}>
+                                  <div className="flex items-center gap-2">
+                                    <Stethoscope className="h-4 w-4" />
+                                    Soin
+                                  </div>
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-1">
+                            <Label className="text-xs">Article</Label>
+                            <Select
+                              value={item.id_bien ? String(item.id_bien) : ""}
+                              onValueChange={(value) => {
+                                const itemId = parseInt(value);
+                                const availableItems =
+                                  item.type_bien === TypeBien.PRODUIT
+                                    ? products
+                                    : soins;
+                                const selected = availableItems.find(
+                                  (i) => i.id === itemId,
+                                );
+                                if (selected) {
+                                  handleInvoiceItemChange(
+                                    index,
+                                    "id_bien",
+                                    itemId,
+                                  );
+                                  handleInvoiceItemChange(
+                                    index,
+                                    "nom_bien",
+                                    selected.Nom,
+                                  );
+                                  handleInvoiceItemChange(
+                                    index,
+                                    "prix_unitaire",
+                                    selected.prix,
+                                  );
+                                }
+                              }}
+                              disabled={isSubmitting || !item.type_bien}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Sélectionnez un article" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {(item.type_bien === TypeBien.PRODUIT
+                                  ? products
+                                  : soins
+                                ).map((availableItem) => (
+                                  <SelectItem
+                                    key={availableItem.id}
+                                    value={String(availableItem.id)}
+                                  >
+                                    {availableItem.Nom} - {availableItem.prix}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
 
                           <div className="grid grid-cols-2 gap-2">
                             <div className="space-y-1">
@@ -957,11 +1140,14 @@ export default function WorkflowFormModal({
                                   handleInvoiceItemChange(
                                     index,
                                     "quantite",
-                                    parseInt(e.target.value),
+                                    parseInt(e.target.value) || 1,
                                   )
                                 }
                                 min="1"
-                                disabled={isSubmitting}
+                                disabled={
+                                  isSubmitting ||
+                                  item.type_bien === TypeBien.SOIN
+                                }
                               />
                             </div>
                             <div className="space-y-1">
@@ -973,7 +1159,7 @@ export default function WorkflowFormModal({
                                   handleInvoiceItemChange(
                                     index,
                                     "prix_unitaire",
-                                    parseFloat(e.target.value),
+                                    parseFloat(e.target.value) || 0,
                                   )
                                 }
                                 min="0"
@@ -1034,32 +1220,6 @@ export default function WorkflowFormModal({
         )}
 
         <div className="space-y-2">
-          <Label htmlFor="payment-method" className="flex items-center gap-2">
-            <Receipt className="h-4 w-4" />
-            Méthode de Paiement
-          </Label>
-          <Select
-            value={invoiceFormData.methode_paiement || ""}
-            onValueChange={(value) =>
-              setInvoiceFormData((prev) => ({
-                ...prev,
-                methode_paiement: value,
-              }))
-            }
-            disabled={isSubmitting}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Sélectionner" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Espèces">Espèces</SelectItem>
-              <SelectItem value="Chèque">Chèque</SelectItem>
-              <SelectItem value="Virement">Virement</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
           <Label htmlFor="invoice-notes">Notes</Label>
           <Textarea
             id="invoice-notes"
@@ -1075,6 +1235,186 @@ export default function WorkflowFormModal({
             className="min-h-24"
           />
         </div>
+      </div>
+    );
+  };
+
+  const renderStep4 = () => {
+    const totals = calculateInvoiceTotals(invoiceItems);
+    return (
+      <div className="space-y-6 max-h-96 overflow-y-auto pr-4">
+        <Card className="border-purple-200 bg-purple-50">
+          <CardContent className="pt-6">
+            <div className="text-sm space-y-2">
+              <div>
+                Patient:{" "}
+                <span className="font-semibold">
+                  {selectedClient?.prenom} {selectedClient?.nom}
+                </span>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {invoiceItems.length} article(s) - Total:{" "}
+                {totals.prix_total.toFixed(2)} DH
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="space-y-2">
+          <Label htmlFor="invoice-status" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Statut de la Facture *
+          </Label>
+          <Select
+            value={invoiceFormData.statut}
+            onValueChange={(value) =>
+              setInvoiceFormData((prev) => ({
+                ...prev,
+                statut: value as FactureStatut,
+                date_paiement:
+                  value === FactureStatut.PAYEE
+                    ? prev.date_paiement ||
+                      new Date().toISOString().slice(0, 16)
+                    : undefined,
+              }))
+            }
+            disabled={isSubmitting}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Sélectionnez le statut" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={FactureStatut.BROUILLON}>Brouillon</SelectItem>
+              <SelectItem value={FactureStatut.PAYEE}>Payée</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {invoiceFormData.statut === FactureStatut.PAYEE && (
+          <>
+            <Separator />
+            <div className="space-y-2">
+              <Label htmlFor="date_paiement">Date de paiement *</Label>
+              <Input
+                id="date_paiement"
+                type="datetime-local"
+                value={invoiceFormData.date_paiement || ""}
+                onChange={(e) =>
+                  setInvoiceFormData((prev) => ({
+                    ...prev,
+                    date_paiement: e.target.value,
+                  }))
+                }
+                disabled={isSubmitting}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="methode_paiement">Méthode de paiement *</Label>
+              <Select
+                value={invoiceFormData.methode_paiement || ""}
+                onValueChange={(value) =>
+                  setInvoiceFormData((prev) => ({
+                    ...prev,
+                    methode_paiement: value,
+                    cheque_numero:
+                      value !== "Chèque" ? undefined : prev.cheque_numero,
+                    cheque_banque:
+                      value !== "Chèque" ? undefined : prev.cheque_banque,
+                    cheque_date_tirage:
+                      value !== "Chèque" ? undefined : prev.cheque_date_tirage,
+                  }))
+                }
+                disabled={isSubmitting}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionnez la méthode" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="En Espece">En Espece</SelectItem>
+                  <SelectItem value="Paiment Bancaire">
+                    Paiment Bancaire
+                  </SelectItem>
+                  <SelectItem value="Par chéque">Par chéque</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {invoiceFormData.methode_paiement === "Par chéque" && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="cheque_numero"
+                    className="flex items-center gap-2"
+                  >
+                    <Hash className="h-4 w-4" />
+                    Numéro de chèque
+                  </Label>
+                  <Input
+                    id="cheque_numero"
+                    type="text"
+                    value={invoiceFormData.cheque_numero || ""}
+                    onChange={(e) =>
+                      setInvoiceFormData((prev) => ({
+                        ...prev,
+                        cheque_numero: e.target.value,
+                      }))
+                    }
+                    placeholder="Numéro"
+                    disabled={isSubmitting}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="cheque_banque">Nom de la banque</Label>
+                  <Select
+                    value={invoiceFormData.cheque_banque || ""}
+                    onValueChange={(value) =>
+                      setInvoiceFormData((prev) => ({
+                        ...prev,
+                        cheque_banque: value,
+                      }))
+                    }
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionnez la banque" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {bankNames.map((name) => (
+                        <SelectItem key={name} value={name}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="cheque_date_tirage"
+                    className="flex items-center gap-2"
+                  >
+                    <CalendarDays className="h-4 w-4" />
+                    Date de tirage
+                  </Label>
+                  <Input
+                    id="cheque_date_tirage"
+                    type="date"
+                    value={invoiceFormData.cheque_date_tirage || ""}
+                    onChange={(e) =>
+                      setInvoiceFormData((prev) => ({
+                        ...prev,
+                        cheque_date_tirage: e.target.value,
+                      }))
+                    }
+                    disabled={isSubmitting}
+                  />
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
     );
   };
@@ -1112,6 +1452,7 @@ export default function WorkflowFormModal({
           {currentStep === 1 && renderStep1()}
           {currentStep === 2 && renderStep2()}
           {currentStep === 3 && renderStep3()}
+          {currentStep === 4 && renderStep4()}
         </div>
 
         <DialogFooter className="flex justify-between gap-2 px-6">
@@ -1154,10 +1495,26 @@ export default function WorkflowFormModal({
             )}
 
             {currentStep === 3 && (
-              <Button
-                onClick={handleCompleteWorkflow}
-                disabled={isSubmitting || invoiceItems.length === 0}
-              >
+              <>
+                <Button
+                  variant="outline"
+                  onClick={handleSaveAndQuitStep3}
+                  disabled={isSubmitting || invoiceItems.length === 0}
+                >
+                  Enregistrer et Quitter
+                </Button>
+                <Button
+                  onClick={handleNextFromStep3}
+                  disabled={isSubmitting || invoiceItems.length === 0}
+                >
+                  Suivant
+                  <ChevronRight className="w-4 h-4 ml-2" />
+                </Button>
+              </>
+            )}
+
+            {currentStep === 4 && (
+              <Button onClick={handleCompleteWorkflow} disabled={isSubmitting}>
                 Terminer
               </Button>
             )}

@@ -13,7 +13,9 @@ import {
   Trash2,
   Plus,
   ChevronRight,
+  FileText,
 } from "lucide-react";
+import TimeSlotPicker from "@/components/appointments/TimeSlotPicker";
 import {
   Dialog,
   DialogContent,
@@ -83,6 +85,7 @@ import {
 import { ProductsService, Product } from "@/services/productsService";
 import { SoinsService, Soin } from "@/services/soinsService";
 import { AuthService } from "@/services/authService";
+import { OptionsService } from "@/services/optionsService";
 import { useToast } from "@/components/ui/use-toast";
 
 interface WorkflowFormModalProps {
@@ -149,6 +152,7 @@ export default function WorkflowFormModal({
   const [invoiceFormData, setInvoiceFormData] =
     useState<FactureFormData>(createEmptyFacture());
   const [invoiceItems, setInvoiceItems] = useState<FactureItem[]>([]);
+  const [bankNames, setBankNames] = useState<string[]>([]);
 
   // Load data on modal open
   useEffect(() => {
@@ -156,6 +160,9 @@ export default function WorkflowFormModal({
       loadClients();
       loadProducts();
       loadSoins();
+      OptionsService.getBankNames()
+        .then(setBankNames)
+        .catch(() => setBankNames([]));
       const step = (initialStep as Step) || 1;
       setCurrentStep(step);
       setErrors([]);

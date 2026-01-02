@@ -150,8 +150,13 @@ export default function WorkflowFormModal({
   >(null);
 
   // Step 3: Invoice
-  const [invoiceFormData, setInvoiceFormData] =
-    useState<FactureFormData>(createEmptyFacture());
+  const [invoiceFormData, setInvoiceFormData] = useState<FactureFormData>(() => {
+    const empty = createEmptyFacture();
+    return {
+      ...empty,
+      statut: FactureStatut.BROUILLON,
+    };
+  });
   const [invoiceItems, setInvoiceItems] = useState<FactureItem[]>([]);
   const [bankNames, setBankNames] = useState<string[]>([]);
 

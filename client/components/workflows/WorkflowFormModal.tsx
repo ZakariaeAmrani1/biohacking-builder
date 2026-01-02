@@ -419,6 +419,70 @@ export default function WorkflowFormModal({
     setErrors([]);
   };
 
+  const handleNextFromStep3 = async () => {
+    if (invoiceItems.length === 0) {
+      setErrors(["Au moins un article est requis pour la facture"]);
+      return;
+    }
+
+    // Move to step 4
+    setErrors([]);
+    setCurrentStep(4);
+  };
+
+  const handleSaveAndQuitStep3 = async () => {
+    if (invoiceItems.length === 0) {
+      setErrors(["Au moins un article est requis pour la facture"]);
+      return;
+    }
+
+    const currentUser = AuthService.getCurrentUser();
+    const draftInvoiceData = {
+      ...invoiceFormData,
+      statut: FactureStatut.BROUILLON,
+      Cree_par: currentUser.CIN,
+      items: invoiceItems,
+    };
+
+    const validationErrors = validateFactureData(draftInvoiceData);
+    if (validationErrors.length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+
+      const invoice = await InvoicesService.create(draftInvoiceData);
+
+      let appointmentId = createdAppointmentId;
+      if (!appointmentId) {
+        const appointment =
+          await AppointmentsService.create(appointmentFormData);
+        appointmentId = appointment.id;
+      }
+
+      await WorkflowService.create({
+        client_CIN: appointmentFormData.CIN,
+        rendez_vous_id: appointmentId,
+        facture_id: invoice.id,
+        Cree_par: currentUser.CIN,
+      });
+
+      toast({
+        title: "Succès",
+        description: "Flux enregistré en brouillon",
+      });
+
+      onSubmit();
+      onClose();
+    } catch (error: any) {
+      setErrors([error.message || "Erreur lors de l'enregistrement du flux"]);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleCompleteWorkflow = async () => {
     if (invoiceItems.length === 0) {
       setErrors(["Au moins un article est requis pour la facture"]);
@@ -426,6 +490,28 @@ export default function WorkflowFormModal({
     }
 
     const currentUser = AuthService.getCurrentUser();
+
+    // Ensure payment details are present if status is PAYEE
+    if (invoiceFormData.statut === FactureStatut.PAYEE) {
+      if (!invoiceFormData.date_paiement) {
+        setErrors(["La date de paiement est requise"]);
+        return;
+      }
+      if (!invoiceFormData.methode_paiement) {
+        setErrors(["La méthode de paiement est requise"]);
+        return;
+      }
+      if (invoiceFormData.methode_paiement === "Par chéque") {
+        if (
+          !invoiceFormData.cheque_numero ||
+          !invoiceFormData.cheque_banque ||
+          !invoiceFormData.cheque_date_tirage
+        ) {
+          setErrors(["Les informations de chèque sont incomplètes"]);
+          return;
+        }
+      }
+    }
 
     const validationErrors = validateFactureData({
       ...invoiceFormData,

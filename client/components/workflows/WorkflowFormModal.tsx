@@ -150,13 +150,15 @@ export default function WorkflowFormModal({
   >(null);
 
   // Step 3: Invoice
-  const [invoiceFormData, setInvoiceFormData] = useState<FactureFormData>(() => {
-    const empty = createEmptyFacture();
-    return {
-      ...empty,
-      statut: FactureStatut.BROUILLON,
-    };
-  });
+  const [invoiceFormData, setInvoiceFormData] = useState<FactureFormData>(
+    () => {
+      const empty = createEmptyFacture();
+      return {
+        ...empty,
+        statut: FactureStatut.BROUILLON,
+      };
+    },
+  );
   const [invoiceItems, setInvoiceItems] = useState<FactureItem[]>([]);
   const [bankNames, setBankNames] = useState<string[]>([]);
 
@@ -1052,11 +1054,7 @@ export default function WorkflowFormModal({
                                   "type_bien",
                                   value as TypeBien,
                                 );
-                                handleInvoiceItemChange(
-                                  index,
-                                  "id_bien",
-                                  0,
-                                );
+                                handleInvoiceItemChange(index, "id_bien", 0);
                               }}
                               disabled={isSubmitting}
                             >
@@ -1255,7 +1253,8 @@ export default function WorkflowFormModal({
                 </span>
               </div>
               <div className="text-xs text-muted-foreground">
-                {invoiceItems.length} article(s) - Total: {totals.prix_total.toFixed(2)} DH
+                {invoiceItems.length} article(s) - Total:{" "}
+                {totals.prix_total.toFixed(2)} DH
               </div>
             </div>
           </CardContent>
@@ -1311,9 +1310,7 @@ export default function WorkflowFormModal({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="methode_paiement">
-                Méthode de paiement *
-              </Label>
+              <Label htmlFor="methode_paiement">Méthode de paiement *</Label>
               <Select
                 value={invoiceFormData.methode_paiement || ""}
                 onValueChange={(value) =>
@@ -1517,10 +1514,7 @@ export default function WorkflowFormModal({
             )}
 
             {currentStep === 4 && (
-              <Button
-                onClick={handleCompleteWorkflow}
-                disabled={isSubmitting}
-              >
+              <Button onClick={handleCompleteWorkflow} disabled={isSubmitting}>
                 Terminer
               </Button>
             )}

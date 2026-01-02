@@ -14,6 +14,7 @@ import {
   Plus,
   ChevronRight,
   FileText,
+  Hash,
 } from "lucide-react";
 import TimeSlotPicker from "@/components/appointments/TimeSlotPicker";
 import {
@@ -1072,6 +1073,12 @@ export default function WorkflowFormModal({
               setInvoiceFormData((prev) => ({
                 ...prev,
                 methode_paiement: value,
+                cheque_numero:
+                  value !== "Chèque" ? undefined : prev.cheque_numero,
+                cheque_banque:
+                  value !== "Chèque" ? undefined : prev.cheque_banque,
+                cheque_date_tirage:
+                  value !== "Chèque" ? undefined : prev.cheque_date_tirage,
               }))
             }
             disabled={isSubmitting}
@@ -1086,6 +1093,77 @@ export default function WorkflowFormModal({
             </SelectContent>
           </Select>
         </div>
+
+        {invoiceFormData.methode_paiement === "Chèque" && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="space-y-2">
+              <Label htmlFor="cheque_numero" className="flex items-center gap-2">
+                <Hash className="h-4 w-4" />
+                Numéro de chèque
+              </Label>
+              <Input
+                id="cheque_numero"
+                type="text"
+                value={invoiceFormData.cheque_numero || ""}
+                onChange={(e) =>
+                  setInvoiceFormData((prev) => ({
+                    ...prev,
+                    cheque_numero: e.target.value,
+                  }))
+                }
+                placeholder="Numéro"
+                disabled={isSubmitting}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="cheque_banque">Nom de la banque</Label>
+              <Select
+                value={invoiceFormData.cheque_banque || ""}
+                onValueChange={(value) =>
+                  setInvoiceFormData((prev) => ({
+                    ...prev,
+                    cheque_banque: value,
+                  }))
+                }
+                disabled={isSubmitting}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionnez la banque" />
+                </SelectTrigger>
+                <SelectContent>
+                  {bankNames.map((name) => (
+                    <SelectItem key={name} value={name}>
+                      {name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label
+                htmlFor="cheque_date_tirage"
+                className="flex items-center gap-2"
+              >
+                <CalendarDays className="h-4 w-4" />
+                Date de tirage
+              </Label>
+              <Input
+                id="cheque_date_tirage"
+                type="date"
+                value={invoiceFormData.cheque_date_tirage || ""}
+                onChange={(e) =>
+                  setInvoiceFormData((prev) => ({
+                    ...prev,
+                    cheque_date_tirage: e.target.value,
+                  }))
+                }
+                disabled={isSubmitting}
+              />
+            </div>
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label htmlFor="invoice-notes">Notes</Label>

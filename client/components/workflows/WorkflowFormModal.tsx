@@ -951,31 +951,95 @@ export default function WorkflowFormModal({
                     <div className="space-y-3">
                       <div className="flex gap-2 items-start">
                         <div className="flex-1 space-y-2">
-                          <Select
-                            value={item.id_bien ? String(item.id_bien) : ""}
-                            onValueChange={(value) =>
-                              handleInvoiceItemChange(
-                                index,
-                                "id_bien",
-                                parseInt(value),
-                              )
-                            }
-                            disabled={isSubmitting}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Produit/Service" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {products.map((product) => (
-                                <SelectItem
-                                  key={product.id}
-                                  value={String(product.id)}
-                                >
-                                  {product.Nom} - {product.prix}DH
+                          <div className="space-y-1">
+                            <Label className="text-xs">Type d'article</Label>
+                            <Select
+                              value={item.type_bien}
+                              onValueChange={(value) => {
+                                handleInvoiceItemChange(
+                                  index,
+                                  "type_bien",
+                                  value as TypeBien,
+                                );
+                                handleInvoiceItemChange(
+                                  index,
+                                  "id_bien",
+                                  0,
+                                );
+                              }}
+                              disabled={isSubmitting}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value={TypeBien.PRODUIT}>
+                                  <div className="flex items-center gap-2">
+                                    <Package className="h-4 w-4" />
+                                    Produit
+                                  </div>
                                 </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                                <SelectItem value={TypeBien.SOIN}>
+                                  <div className="flex items-center gap-2">
+                                    <Stethoscope className="h-4 w-4" />
+                                    Soin
+                                  </div>
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-1">
+                            <Label className="text-xs">Article</Label>
+                            <Select
+                              value={item.id_bien ? String(item.id_bien) : ""}
+                              onValueChange={(value) => {
+                                const itemId = parseInt(value);
+                                const availableItems =
+                                  item.type_bien === TypeBien.PRODUIT
+                                    ? products
+                                    : soins;
+                                const selected = availableItems.find(
+                                  (i) => i.id === itemId,
+                                );
+                                if (selected) {
+                                  handleInvoiceItemChange(
+                                    index,
+                                    "id_bien",
+                                    itemId,
+                                  );
+                                  handleInvoiceItemChange(
+                                    index,
+                                    "nom_bien",
+                                    selected.Nom,
+                                  );
+                                  handleInvoiceItemChange(
+                                    index,
+                                    "prix_unitaire",
+                                    selected.prix,
+                                  );
+                                }
+                              }}
+                              disabled={isSubmitting || !item.type_bien}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Sélectionnez un article" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {(item.type_bien === TypeBien.PRODUIT
+                                  ? products
+                                  : soins
+                                ).map((availableItem) => (
+                                  <SelectItem
+                                    key={availableItem.id}
+                                    value={String(availableItem.id)}
+                                  >
+                                    {availableItem.Nom} - {availableItem.prix}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
 
                           <div className="grid grid-cols-2 gap-2">
                             <div className="space-y-1">
@@ -987,11 +1051,14 @@ export default function WorkflowFormModal({
                                   handleInvoiceItemChange(
                                     index,
                                     "quantite",
-                                    parseInt(e.target.value),
+                                    parseInt(e.target.value) || 1,
                                   )
                                 }
                                 min="1"
-                                disabled={isSubmitting}
+                                disabled={
+                                  isSubmitting ||
+                                  item.type_bien === TypeBien.SOIN
+                                }
                               />
                             </div>
                             <div className="space-y-1">
@@ -1003,7 +1070,7 @@ export default function WorkflowFormModal({
                                   handleInvoiceItemChange(
                                     index,
                                     "prix_unitaire",
-                                    parseFloat(e.target.value),
+                                    parseFloat(e.target.value) || 0,
                                   )
                                 }
                                 min="0"
@@ -1064,109 +1131,6 @@ export default function WorkflowFormModal({
         )}
 
         <div className="space-y-2">
-          <Label htmlFor="payment-method" className="flex items-center gap-2">
-            <Receipt className="h-4 w-4" />
-            Méthode de Paiement
-          </Label>
-          <Select
-            value={invoiceFormData.methode_paiement || ""}
-            onValueChange={(value) =>
-              setInvoiceFormData((prev) => ({
-                ...prev,
-                methode_paiement: value,
-                cheque_numero:
-                  value !== "Chèque" ? undefined : prev.cheque_numero,
-                cheque_banque:
-                  value !== "Chèque" ? undefined : prev.cheque_banque,
-                cheque_date_tirage:
-                  value !== "Chèque" ? undefined : prev.cheque_date_tirage,
-              }))
-            }
-            disabled={isSubmitting}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Sélectionner" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Espèces">Espèces</SelectItem>
-              <SelectItem value="Chèque">Chèque</SelectItem>
-              <SelectItem value="Virement">Virement</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {invoiceFormData.methode_paiement === "Chèque" && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-            <div className="space-y-2">
-              <Label htmlFor="cheque_numero" className="flex items-center gap-2">
-                <Hash className="h-4 w-4" />
-                Numéro de chèque
-              </Label>
-              <Input
-                id="cheque_numero"
-                type="text"
-                value={invoiceFormData.cheque_numero || ""}
-                onChange={(e) =>
-                  setInvoiceFormData((prev) => ({
-                    ...prev,
-                    cheque_numero: e.target.value,
-                  }))
-                }
-                placeholder="Numéro"
-                disabled={isSubmitting}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="cheque_banque">Nom de la banque</Label>
-              <Select
-                value={invoiceFormData.cheque_banque || ""}
-                onValueChange={(value) =>
-                  setInvoiceFormData((prev) => ({
-                    ...prev,
-                    cheque_banque: value,
-                  }))
-                }
-                disabled={isSubmitting}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionnez la banque" />
-                </SelectTrigger>
-                <SelectContent>
-                  {bankNames.map((name) => (
-                    <SelectItem key={name} value={name}>
-                      {name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label
-                htmlFor="cheque_date_tirage"
-                className="flex items-center gap-2"
-              >
-                <CalendarDays className="h-4 w-4" />
-                Date de tirage
-              </Label>
-              <Input
-                id="cheque_date_tirage"
-                type="date"
-                value={invoiceFormData.cheque_date_tirage || ""}
-                onChange={(e) =>
-                  setInvoiceFormData((prev) => ({
-                    ...prev,
-                    cheque_date_tirage: e.target.value,
-                  }))
-                }
-                disabled={isSubmitting}
-              />
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-2">
           <Label htmlFor="invoice-notes">Notes</Label>
           <Textarea
             id="invoice-notes"
@@ -1182,6 +1146,187 @@ export default function WorkflowFormModal({
             className="min-h-24"
           />
         </div>
+      </div>
+    );
+  };
+
+  const renderStep4 = () => {
+    const totals = calculateInvoiceTotals(invoiceItems);
+    return (
+      <div className="space-y-6 max-h-96 overflow-y-auto pr-4">
+        <Card className="border-purple-200 bg-purple-50">
+          <CardContent className="pt-6">
+            <div className="text-sm space-y-2">
+              <div>
+                Patient:{" "}
+                <span className="font-semibold">
+                  {selectedClient?.prenom} {selectedClient?.nom}
+                </span>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {invoiceItems.length} article(s) - Total: {totals.prix_total.toFixed(2)} DH
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="space-y-2">
+          <Label htmlFor="invoice-status" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Statut de la Facture *
+          </Label>
+          <Select
+            value={invoiceFormData.statut}
+            onValueChange={(value) =>
+              setInvoiceFormData((prev) => ({
+                ...prev,
+                statut: value as FactureStatut,
+                date_paiement:
+                  value === FactureStatut.PAYEE
+                    ? prev.date_paiement ||
+                      new Date().toISOString().slice(0, 16)
+                    : undefined,
+              }))
+            }
+            disabled={isSubmitting}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Sélectionnez le statut" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={FactureStatut.BROUILLON}>Brouillon</SelectItem>
+              <SelectItem value={FactureStatut.PAYEE}>Payée</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {invoiceFormData.statut === FactureStatut.PAYEE && (
+          <>
+            <Separator />
+            <div className="space-y-2">
+              <Label htmlFor="date_paiement">Date de paiement *</Label>
+              <Input
+                id="date_paiement"
+                type="datetime-local"
+                value={invoiceFormData.date_paiement || ""}
+                onChange={(e) =>
+                  setInvoiceFormData((prev) => ({
+                    ...prev,
+                    date_paiement: e.target.value,
+                  }))
+                }
+                disabled={isSubmitting}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="methode_paiement">
+                Méthode de paiement *
+              </Label>
+              <Select
+                value={invoiceFormData.methode_paiement || ""}
+                onValueChange={(value) =>
+                  setInvoiceFormData((prev) => ({
+                    ...prev,
+                    methode_paiement: value,
+                    cheque_numero:
+                      value !== "Chèque" ? undefined : prev.cheque_numero,
+                    cheque_banque:
+                      value !== "Chèque" ? undefined : prev.cheque_banque,
+                    cheque_date_tirage:
+                      value !== "Chèque" ? undefined : prev.cheque_date_tirage,
+                  }))
+                }
+                disabled={isSubmitting}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionnez la méthode" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="En Espece">En Espece</SelectItem>
+                  <SelectItem value="Paiment Bancaire">
+                    Paiment Bancaire
+                  </SelectItem>
+                  <SelectItem value="Par chéque">Par chéque</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {invoiceFormData.methode_paiement === "Par chéque" && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="cheque_numero"
+                    className="flex items-center gap-2"
+                  >
+                    <Hash className="h-4 w-4" />
+                    Numéro de chèque
+                  </Label>
+                  <Input
+                    id="cheque_numero"
+                    type="text"
+                    value={invoiceFormData.cheque_numero || ""}
+                    onChange={(e) =>
+                      setInvoiceFormData((prev) => ({
+                        ...prev,
+                        cheque_numero: e.target.value,
+                      }))
+                    }
+                    placeholder="Numéro"
+                    disabled={isSubmitting}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="cheque_banque">Nom de la banque</Label>
+                  <Select
+                    value={invoiceFormData.cheque_banque || ""}
+                    onValueChange={(value) =>
+                      setInvoiceFormData((prev) => ({
+                        ...prev,
+                        cheque_banque: value,
+                      }))
+                    }
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionnez la banque" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {bankNames.map((name) => (
+                        <SelectItem key={name} value={name}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="cheque_date_tirage"
+                    className="flex items-center gap-2"
+                  >
+                    <CalendarDays className="h-4 w-4" />
+                    Date de tirage
+                  </Label>
+                  <Input
+                    id="cheque_date_tirage"
+                    type="date"
+                    value={invoiceFormData.cheque_date_tirage || ""}
+                    onChange={(e) =>
+                      setInvoiceFormData((prev) => ({
+                        ...prev,
+                        cheque_date_tirage: e.target.value,
+                      }))
+                    }
+                    disabled={isSubmitting}
+                  />
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
     );
   };

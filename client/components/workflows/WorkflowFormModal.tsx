@@ -801,12 +801,10 @@ export default function WorkflowFormModal({
           <Clock className="h-4 w-4" />
           Date et heure du rendez-vous *
         </Label>
-        <Input
-          id="appointment-date"
-          type="datetime-local"
+        <TimeSlotPicker
           value={appointmentFormData.date_rendez_vous}
-          onChange={(e) =>
-            handleAppointmentChange("date_rendez_vous", e.target.value)
+          onChange={(datetime) =>
+            handleAppointmentChange("date_rendez_vous", datetime)
           }
           disabled={isSubmitting}
         />

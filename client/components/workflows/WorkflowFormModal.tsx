@@ -97,7 +97,7 @@ interface WorkflowFormModalProps {
   initialStep?: number;
 }
 
-type Step = 1 | 2 | 3;
+type Step = 1 | 2 | 3 | 4;
 
 export default function WorkflowFormModal({
   isOpen,
@@ -484,7 +484,7 @@ export default function WorkflowFormModal({
 
   const renderStepIndicator = () => (
     <div className="flex items-center justify-center gap-3 mb-6 px-6 py-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg border border-blue-100">
-      {[1, 2, 3].map((step) => (
+      {[1, 2, 3, 4].map((step) => (
         <div key={step} className="flex items-center gap-3">
           <div
             className={`flex h-10 w-10 items-center justify-center rounded-full font-semibold transition-all ${
@@ -501,8 +501,9 @@ export default function WorkflowFormModal({
             {step === 1 && "Patient"}
             {step === 2 && "Rendez-vous"}
             {step === 3 && "Facturation"}
+            {step === 4 && "Paiement"}
           </div>
-          {step < 3 && (
+          {step < 4 && (
             <div
               className={`h-1 w-12 rounded-full transition-all ${
                 step < currentStep ? "bg-green-500" : "bg-gray-200"

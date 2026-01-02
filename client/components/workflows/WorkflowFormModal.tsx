@@ -1450,6 +1450,7 @@ export default function WorkflowFormModal({
           {currentStep === 1 && renderStep1()}
           {currentStep === 2 && renderStep2()}
           {currentStep === 3 && renderStep3()}
+          {currentStep === 4 && renderStep4()}
         </div>
 
         <DialogFooter className="flex justify-between gap-2 px-6">
@@ -1492,9 +1493,28 @@ export default function WorkflowFormModal({
             )}
 
             {currentStep === 3 && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={handleSaveAndQuitStep3}
+                  disabled={isSubmitting || invoiceItems.length === 0}
+                >
+                  Enregistrer et Quitter
+                </Button>
+                <Button
+                  onClick={handleNextFromStep3}
+                  disabled={isSubmitting || invoiceItems.length === 0}
+                >
+                  Suivant
+                  <ChevronRight className="w-4 h-4 ml-2" />
+                </Button>
+              </>
+            )}
+
+            {currentStep === 4 && (
               <Button
                 onClick={handleCompleteWorkflow}
-                disabled={isSubmitting || invoiceItems.length === 0}
+                disabled={isSubmitting}
               >
                 Terminer
               </Button>

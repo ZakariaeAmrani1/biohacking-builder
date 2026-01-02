@@ -677,19 +677,42 @@ export default function WorkflowFormModal({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="new-patient-cin">CIN *</Label>
-                  <Input
-                    id="new-patient-cin"
-                    type="text"
-                    value={newPatientData.CIN || ""}
-                    onChange={(e) =>
-                      setNewPatientData((prev) => ({
-                        ...prev,
-                        CIN: e.target.value.toUpperCase(),
-                      }))
-                    }
-                    placeholder="Ex: B1234567"
-                    disabled={isSubmitting}
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="new-patient-cin"
+                      type="text"
+                      value={newPatientData.CIN || ""}
+                      onChange={(e) =>
+                        setNewPatientData((prev) => ({
+                          ...prev,
+                          CIN: e.target.value.toUpperCase(),
+                        }))
+                      }
+                      placeholder="Ex: B1234567"
+                      disabled={isSubmitting}
+                      className="font-mono"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const bytes = crypto.getRandomValues(new Uint8Array(6));
+                        let digits = "";
+                        for (let i = 0; i < bytes.length; i++) {
+                          digits += String(bytes[i] % 10);
+                        }
+                        setNewPatientData((prev) => ({
+                          ...prev,
+                          CIN: `BH${digits}`,
+                        }));
+                      }}
+                      disabled={isSubmitting}
+                      className="whitespace-nowrap"
+                    >
+                      Générer
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="space-y-2">

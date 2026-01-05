@@ -94,6 +94,7 @@ interface WorkflowFormModalProps {
   onClose: () => void;
   onSubmit: () => void;
   workflow?: Workflow;
+  workflowDetails?: WorkflowWithDetails;
   initialStep?: number;
 }
 

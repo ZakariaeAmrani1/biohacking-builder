@@ -5,10 +5,10 @@ import {
   Edit,
   Trash2,
   ChevronDown,
-  LayoutGrid,
-  Table as TableIcon,
+  Columns3,
   FileText,
   AlertTriangle,
+  X,
 } from "lucide-react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,8 +37,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
-import { TableLoader, GridLoader } from "@/components/ui/table-loader";
+import { TableLoader } from "@/components/ui/table-loader";
 import WorkflowFormModal from "@/components/workflows/WorkflowFormModal";
 import {
   WorkflowService,
@@ -47,13 +48,171 @@ import {
   getWorkflowStatusColor,
   getWorkflowStatusBadge,
 } from "@/services/workflowService";
-import { UserService } from "@/services/userService";
+
+// Define all available columns
+type ColumnKey =
+  | "patient"
+  | "cin"
+  | "rendezvous"
+  | "appointmentStatus"
+  | "soins"
+  | "products"
+  | "totalAmount"
+  | "paymentMethod"
+  | "paymentDate"
+  | "invoiceStatus"
+  | "createdBy"
+  | "actions";
+
+const COLUMN_LABELS: Record<ColumnKey, string> = {
+  patient: "Patient",
+  cin: "CIN",
+  rendezvous: "Rendez-vous",
+  appointmentStatus: "Statut Rendez-vous",
+  soins: "Soins",
+  products: "Produits",
+  totalAmount: "Montant Total",
+  paymentMethod: "Méthode de Paiement",
+  paymentDate: "Date de Paiement",
+  invoiceStatus: "Statut Facture",
+  createdBy: "Créé par",
+  actions: "Actions",
+};
+
+const DEFAULT_VISIBLE_COLUMNS: ColumnKey[] = [
+  "patient",
+  "cin",
+  "rendezvous",
+  "appointmentStatus",
+  "soins",
+  "products",
+  "totalAmount",
+  "paymentMethod",
+  "paymentDate",
+  "invoiceStatus",
+  "createdBy",
+  "actions",
+];
+
+interface InvoiceStatusInfo {
+  display: string;
+  color: string;
+}
+
+const getInvoiceStatusDisplay = (status?: string): InvoiceStatusInfo => {
+  switch (status) {
+    case "Brouillon":
+      return { display: "Brouillon", color: "bg-gray-100 text-gray-800" };
+    case "Envoyée":
+      return { display: "Envoyée", color: "bg-blue-100 text-blue-800" };
+    case "Payée":
+      return { display: "Payée", color: "bg-green-100 text-green-800" };
+    case "Annulée":
+      return { display: "Annulée", color: "bg-red-100 text-red-800" };
+    case "En retard":
+      return { display: "En retard", color: "bg-yellow-100 text-yellow-800" };
+    default:
+      return { display: "-", color: "bg-gray-100 text-gray-800" };
+  }
+};
+
+const AppointmentStatusDisplay = (status?: string): InvoiceStatusInfo => {
+  switch (status) {
+    case "programmé":
+      return {
+        display: "Programmé",
+        color: "bg-purple-100 text-purple-800",
+      };
+    case "confirmé":
+      return { display: "Confirmé", color: "bg-blue-100 text-blue-800" };
+    case "terminé":
+      return { display: "Terminé", color: "bg-green-100 text-green-800" };
+    case "annulé":
+      return { display: "Annulé", color: "bg-red-100 text-red-800" };
+    default:
+      return { display: "-", color: "bg-gray-100 text-gray-800" };
+  }
+};
+
+// Column visibility dropdown component
+const ColumnVisibilityDropdown = ({
+  visibleColumns,
+  onColumnToggle,
+  className,
+}: {
+  visibleColumns: ColumnKey[];
+  onColumnToggle: (column: ColumnKey) => void;
+  className?: string;
+}) => {
+  const nonActionColumns = (Object.keys(COLUMN_LABELS) as ColumnKey[]).filter(
+    (col) => col !== "actions",
+  );
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" className={className}>
+          <Columns3 className="w-4 h-4 mr-2" />
+          Colonnes
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-56 p-3">
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-gray-700 px-2">
+            Colonnes à afficher
+          </p>
+          {nonActionColumns.map((column) => (
+            <div key={column} className="flex items-center gap-2">
+              <Checkbox
+                id={`column-${column}`}
+                checked={visibleColumns.includes(column)}
+                onCheckedChange={() => onColumnToggle(column)}
+              />
+              <label
+                htmlFor={`column-${column}`}
+                className="text-sm text-gray-700 cursor-pointer flex-1"
+              >
+                {COLUMN_LABELS[column]}
+              </label>
+            </div>
+          ))}
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+
+// Tag list component for soins and products
+const TagList = ({ items, maxDisplay = 3 }: { items?: string[]; maxDisplay?: number }) => {
+  if (!items || items.length === 0) {
+    return <span className="text-gray-500">-</span>;
+  }
+
+  const displayItems = items.slice(0, maxDisplay);
+  const moreCount = Math.max(0, items.length - maxDisplay);
+
+  return (
+    <div className="flex flex-wrap gap-1">
+      {displayItems.map((item, idx) => (
+        <Badge key={idx} variant="secondary" className="text-xs">
+          {item}
+        </Badge>
+      ))}
+      {moreCount > 0 && (
+        <Badge variant="outline" className="text-xs">
+          +{moreCount}
+        </Badge>
+      )}
+    </div>
+  );
+};
 
 export default function Workflows() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("tous");
   const [creatorFilter, setCreatorFilter] = useState<string>("tous");
-  const [viewMode, setViewMode] = useState<"table" | "cards">("table");
+  const [visibleColumns, setVisibleColumns] =
+    useState<ColumnKey[]>(DEFAULT_VISIBLE_COLUMNS);
 
   // Data state
   const [workflows, setWorkflows] = useState<WorkflowWithDetails[]>([]);
@@ -118,6 +277,15 @@ export default function Workflows() {
       return matchesSearch && matchesStatus && matchesCreator;
     });
   }, [workflows, searchTerm, statusFilter, creatorFilter]);
+
+  // Handle column toggle
+  const handleColumnToggle = (column: ColumnKey) => {
+    setVisibleColumns((prev) =>
+      prev.includes(column)
+        ? prev.filter((col) => col !== column)
+        : [...prev, column],
+    );
+  };
 
   // Handle create new workflow
   const handleOpenCreateModal = () => {
@@ -197,172 +365,177 @@ export default function Workflows() {
   };
 
   const renderTableView = () => (
-    <div className="border rounded-lg overflow-hidden">
+    <div className="border rounded-lg overflow-hidden flex flex-col">
       {isLoading ? (
-        <TableLoader columns={8} rows={6} />
+        <TableLoader columns={visibleColumns.length} rows={6} />
       ) : filteredWorkflows.length === 0 ? (
         <div className="p-8 text-center">
           <FileText className="w-12 h-12 mx-auto text-gray-400 mb-3" />
           <p className="text-gray-600">Aucun flux trouvé</p>
         </div>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Patient</TableHead>
-              <TableHead>CIN</TableHead>
-              <TableHead>Rendez-vous</TableHead>
-              <TableHead>Statut</TableHead>
-              <TableHead>Montant Total</TableHead>
-              <TableHead>Méthode de Paiement</TableHead>
-              <TableHead>Créé par</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredWorkflows.map((workflow) => (
-              <TableRow key={workflow.id}>
-                <TableCell className="font-medium">
-                  {workflow.patientName || "N/A"}
-                </TableCell>
-                <TableCell className="text-sm text-gray-600">
-                  {workflow.client_CIN}
-                </TableCell>
-                <TableCell className="text-sm">
-                  {workflow.appointmentDate
-                    ? new Date(workflow.appointmentDate).toLocaleDateString(
-                        "fr-FR",
-                      )
-                    : "N/A"}
-                </TableCell>
-                <TableCell>
-                  <Badge className={getWorkflowStatusColor(workflow.status)}>
-                    {getWorkflowStatusBadge(workflow.status)}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  {workflow.totalAmount
-                    ? `${workflow.totalAmount.toFixed(2)} DH`
-                    : "-"}
-                </TableCell>
-                <TableCell>{workflow.paymentMethod || "-"}</TableCell>
-                <TableCell className="text-sm text-gray-600">
-                  {workflow.Cree_par}
-                </TableCell>
-                <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <ChevronDown className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() => handleEditWorkflow(workflow)}
-                      >
-                        <Edit className="w-4 h-4 mr-2" />
-                        Modifier
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => setDeleteConfirm(workflow as Workflow)}
-                        className="text-red-600"
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Supprimer
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
+        <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-400px)]">
+          <Table>
+            <TableHeader className="sticky top-0 z-10">
+              <TableRow>
+                {visibleColumns.includes("patient") && (
+                  <TableHead>Patient</TableHead>
+                )}
+                {visibleColumns.includes("cin") && <TableHead>CIN</TableHead>}
+                {visibleColumns.includes("rendezvous") && (
+                  <TableHead>Rendez-vous</TableHead>
+                )}
+                {visibleColumns.includes("appointmentStatus") && (
+                  <TableHead>Statut Rendez-vous</TableHead>
+                )}
+                {visibleColumns.includes("soins") && <TableHead>Soins</TableHead>}
+                {visibleColumns.includes("products") && (
+                  <TableHead>Produits</TableHead>
+                )}
+                {visibleColumns.includes("totalAmount") && (
+                  <TableHead>Montant Total</TableHead>
+                )}
+                {visibleColumns.includes("paymentMethod") && (
+                  <TableHead>Méthode de Paiement</TableHead>
+                )}
+                {visibleColumns.includes("paymentDate") && (
+                  <TableHead>Date de Paiement</TableHead>
+                )}
+                {visibleColumns.includes("invoiceStatus") && (
+                  <TableHead>Statut Facture</TableHead>
+                )}
+                {visibleColumns.includes("createdBy") && (
+                  <TableHead>Créé par</TableHead>
+                )}
+                {visibleColumns.includes("actions") && (
+                  <TableHead className="text-right">Actions</TableHead>
+                )}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
-    </div>
-  );
-
-  const renderCardView = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {isLoading ? (
-        <GridLoader />
-      ) : filteredWorkflows.length === 0 ? (
-        <div className="col-span-full p-8 text-center">
-          <FileText className="w-12 h-12 mx-auto text-gray-400 mb-3" />
-          <p className="text-gray-600">Aucun flux trouvé</p>
+            </TableHeader>
+            <TableBody>
+              {filteredWorkflows.map((workflow) => (
+                <TableRow key={workflow.id}>
+                  {visibleColumns.includes("patient") && (
+                    <TableCell className="font-medium">
+                      {workflow.patientName || "N/A"}
+                    </TableCell>
+                  )}
+                  {visibleColumns.includes("cin") && (
+                    <TableCell className="text-sm text-gray-600">
+                      {workflow.client_CIN}
+                    </TableCell>
+                  )}
+                  {visibleColumns.includes("rendezvous") && (
+                    <TableCell className="text-sm">
+                      {workflow.appointmentDate
+                        ? new Date(workflow.appointmentDate).toLocaleDateString(
+                            "fr-FR",
+                          )
+                        : "N/A"}
+                    </TableCell>
+                  )}
+                  {visibleColumns.includes("appointmentStatus") && (
+                    <TableCell>
+                      {workflow.appointmentStatus ? (
+                        <Badge
+                          className={
+                            AppointmentStatusDisplay(workflow.appointmentStatus)
+                              .color
+                          }
+                        >
+                          {
+                            AppointmentStatusDisplay(workflow.appointmentStatus)
+                              .display
+                          }
+                        </Badge>
+                      ) : (
+                        <span className="text-gray-500">-</span>
+                      )}
+                    </TableCell>
+                  )}
+                  {visibleColumns.includes("soins") && (
+                    <TableCell>
+                      <TagList items={workflow.soins} />
+                    </TableCell>
+                  )}
+                  {visibleColumns.includes("products") && (
+                    <TableCell>
+                      <TagList items={workflow.products} />
+                    </TableCell>
+                  )}
+                  {visibleColumns.includes("totalAmount") && (
+                    <TableCell>
+                      {workflow.totalAmount
+                        ? `${workflow.totalAmount.toFixed(2)} DH`
+                        : "-"}
+                    </TableCell>
+                  )}
+                  {visibleColumns.includes("paymentMethod") && (
+                    <TableCell>{workflow.paymentMethod || "-"}</TableCell>
+                  )}
+                  {visibleColumns.includes("paymentDate") && (
+                    <TableCell className="text-sm">
+                      {workflow.paymentDate
+                        ? new Date(workflow.paymentDate).toLocaleDateString(
+                            "fr-FR",
+                          )
+                        : "-"}
+                    </TableCell>
+                  )}
+                  {visibleColumns.includes("invoiceStatus") && (
+                    <TableCell>
+                      {workflow.invoiceStatus ? (
+                        <Badge
+                          className={
+                            getInvoiceStatusDisplay(workflow.invoiceStatus).color
+                          }
+                        >
+                          {
+                            getInvoiceStatusDisplay(workflow.invoiceStatus)
+                              .display
+                          }
+                        </Badge>
+                      ) : (
+                        <span className="text-gray-500">-</span>
+                      )}
+                    </TableCell>
+                  )}
+                  {visibleColumns.includes("createdBy") && (
+                    <TableCell className="text-sm text-gray-600">
+                      {workflow.Cree_par}
+                    </TableCell>
+                  )}
+                  {visibleColumns.includes("actions") && (
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <ChevronDown className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => handleEditWorkflow(workflow)}
+                          >
+                            <Edit className="w-4 h-4 mr-2" />
+                            Modifier
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => setDeleteConfirm(workflow as Workflow)}
+                            className="text-red-600"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Supprimer
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
-      ) : (
-        filteredWorkflows.map((workflow) => (
-          <Card key={workflow.id} className="flex flex-col">
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <CardTitle className="text-base">
-                    {workflow.patientName || "N/A"}
-                  </CardTitle>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {workflow.client_CIN}
-                  </p>
-                </div>
-                <Badge className={getWorkflowStatusColor(workflow.status)}>
-                  {getWorkflowStatusBadge(workflow.status)}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="flex-1 space-y-3">
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Rendez-vous:</span>
-                  <span>
-                    {workflow.appointmentDate
-                      ? new Date(workflow.appointmentDate).toLocaleDateString(
-                          "fr-FR",
-                        )
-                      : "N/A"}
-                  </span>
-                </div>
-                {workflow.totalAmount && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Total:</span>
-                    <span className="font-medium">
-                      {workflow.totalAmount.toFixed(2)} DH
-                    </span>
-                  </div>
-                )}
-                {workflow.paymentMethod && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Paiement:</span>
-                    <span>{workflow.paymentMethod}</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Créé par:</span>
-                  <span>{workflow.Cree_par}</span>
-                </div>
-              </div>
-
-              <div className="pt-3 border-t flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleEditWorkflow(workflow)}
-                  className="flex-1"
-                >
-                  <Edit className="w-3 h-3 mr-1" />
-                  Modifier
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => setDeleteConfirm(workflow as Workflow)}
-                  className="flex-1"
-                >
-                  <Trash2 className="w-3 h-3 mr-1" />
-                  Supprimer
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))
       )}
     </div>
   );
@@ -433,6 +606,11 @@ export default function Workflows() {
                   </SelectContent>
                 </Select>
               </div>
+
+              <ColumnVisibilityDropdown
+                visibleColumns={visibleColumns}
+                onColumnToggle={handleColumnToggle}
+              />
             </div>
 
             <div className="flex items-center justify-between">
@@ -441,31 +619,12 @@ export default function Workflows() {
                 {filteredWorkflows.length !== 1 ? "s" : ""} trouvé
                 {filteredWorkflows.length !== 1 ? "s" : ""}
               </p>
-
-              <div className="flex gap-2">
-                <Button
-                  variant={viewMode === "table" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setViewMode("table")}
-                >
-                  <TableIcon className="w-4 h-4 mr-2" />
-                  Tableau
-                </Button>
-                <Button
-                  variant={viewMode === "cards" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setViewMode("cards")}
-                >
-                  <LayoutGrid className="w-4 h-4 mr-2" />
-                  Cartes
-                </Button>
-              </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Results */}
-        {viewMode === "table" ? renderTableView() : renderCardView()}
+        {renderTableView()}
       </div>
 
       {/* Modals */}

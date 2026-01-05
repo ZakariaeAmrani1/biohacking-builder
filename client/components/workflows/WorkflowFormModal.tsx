@@ -426,17 +426,39 @@ export default function WorkflowFormModal({
 
     try {
       setIsSubmitting(true);
-      const appointment = await AppointmentsService.create(updatedFormData);
 
-      await WorkflowService.create({
-        client_CIN: updatedFormData.CIN,
-        rendez_vous_id: appointment.id,
-        Cree_par: currentUser.CIN,
-      });
+      let appointmentId: number;
+
+      // If editing, update appointment; otherwise create new
+      if (isEditMode && createdAppointmentId) {
+        await AppointmentsService.update(
+          createdAppointmentId,
+          updatedFormData,
+        );
+        appointmentId = createdAppointmentId;
+      } else {
+        const appointment = await AppointmentsService.create(updatedFormData);
+        appointmentId = appointment.id;
+      }
+
+      // If editing, update workflow; otherwise create new
+      if (isEditMode && workflow?.id) {
+        await WorkflowService.update(workflow.id, {
+          client_CIN: updatedFormData.CIN,
+          rendez_vous_id: appointmentId,
+          Cree_par: currentUser.CIN,
+        });
+      } else {
+        await WorkflowService.create({
+          client_CIN: updatedFormData.CIN,
+          rendez_vous_id: appointmentId,
+          Cree_par: currentUser.CIN,
+        });
+      }
 
       toast({
         title: "Succès",
-        description: "Flux créé et enregistré",
+        description: isEditMode ? "Flux mis à jour" : "Flux créé et enregistré",
       });
 
       onSubmit();

@@ -138,12 +138,28 @@ export default function Workflows() {
       Cree_par: workflow.Cree_par,
     });
     setSelectedWorkflow(workflow);
+    setEditingWorkflowDetails(workflow);
 
-    // Determine which step to open based on workflow status
-    // If "En cours" (no invoice), open at step 3 to add invoice
-    // If "Terminé" (has invoice), open at step 1 to allow full edit
-    const step = workflow.status === "En cours" ? 3 : 1;
-    setInitialStep(step as 1 | 2 | 3);
+    // Determine which step to open based on invoice status
+    let step: 1 | 2 | 3 | 4 = 1;
+
+    if (workflow.invoice) {
+      // If invoice exists but is in draft/brouillon, go to step 4 (payment)
+      if (workflow.invoice.statut === "Brouillon") {
+        step = 4;
+      } else {
+        // If invoice is paid, allow full edit from step 1
+        step = 1;
+      }
+    } else if (workflow.facture_id) {
+      // If facture_id exists but no invoice data loaded, go to step 3 (add invoice)
+      step = 3;
+    } else {
+      // No invoice yet, go to step 3 to add one
+      step = 3;
+    }
+
+    setInitialStep(step);
     setIsFormModalOpen(true);
   };
 

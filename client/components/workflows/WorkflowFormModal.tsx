@@ -570,7 +570,19 @@ export default function WorkflowFormModal({
     try {
       setIsSubmitting(true);
 
-      const invoice = await InvoicesService.create(draftInvoiceData);
+      let invoiceId: number;
+
+      // If editing and invoice exists, update it; otherwise create new
+      if (isEditMode && workflow?.facture_id) {
+        const updatedInvoice = await InvoicesService.update(
+          workflow.facture_id,
+          draftInvoiceData,
+        );
+        invoiceId = updatedInvoice?.id || workflow.facture_id;
+      } else {
+        const invoice = await InvoicesService.create(draftInvoiceData);
+        invoiceId = invoice.id;
+      }
 
       let appointmentId = createdAppointmentId;
       if (!appointmentId) {
@@ -579,16 +591,26 @@ export default function WorkflowFormModal({
         appointmentId = appointment.id;
       }
 
-      await WorkflowService.create({
-        client_CIN: appointmentFormData.CIN,
-        rendez_vous_id: appointmentId,
-        facture_id: invoice.id,
-        Cree_par: currentUser.CIN,
-      });
+      // If editing, update workflow; otherwise create new
+      if (isEditMode && workflow?.id) {
+        await WorkflowService.update(workflow.id, {
+          client_CIN: appointmentFormData.CIN,
+          rendez_vous_id: appointmentId,
+          facture_id: invoiceId,
+          Cree_par: currentUser.CIN,
+        });
+      } else {
+        await WorkflowService.create({
+          client_CIN: appointmentFormData.CIN,
+          rendez_vous_id: appointmentId,
+          facture_id: invoiceId,
+          Cree_par: currentUser.CIN,
+        });
+      }
 
       toast({
         title: "Succès",
-        description: "Flux enregistré en brouillon",
+        description: isEditMode ? "Flux mis à jour" : "Flux enregistré en brouillon",
       });
 
       onSubmit();

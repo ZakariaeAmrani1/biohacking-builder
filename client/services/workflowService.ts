@@ -71,6 +71,11 @@ export class WorkflowService {
   // Get all workflows with resolved details
   static async getAllWithDetails(): Promise<WorkflowWithDetails[]> {
     const workflows = await this.getAll();
+
+    // Ensure mock data arrays are populated before enriching
+    await AppointmentsService.getAll();
+    await InvoicesService.getAll();
+
     return Promise.all(workflows.map((w) => this.enrichWorkflow(w)));
   }
 
@@ -112,6 +117,9 @@ export class WorkflowService {
           result.invoice = invoice;
           result.totalAmount = invoice.prix_total;
           result.paymentMethod = invoice.methode_paiement;
+
+          // Update status: Terminé only if invoice is PAID
+          result.status = invoice.statut === "Payée" ? "Terminé" : "En cours";
         }
       } catch (error) {
         console.error("Error fetching invoice:", error);

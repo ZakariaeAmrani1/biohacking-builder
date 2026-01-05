@@ -58,6 +58,7 @@ import {
   WorkflowService,
   Workflow,
   WorkflowFormData,
+  WorkflowWithDetails,
   validateWorkflowData,
 } from "@/services/workflowService";
 import {
@@ -94,6 +95,7 @@ interface WorkflowFormModalProps {
   onClose: () => void;
   onSubmit: () => void;
   workflow?: Workflow;
+  workflowDetails?: WorkflowWithDetails;
   initialStep?: number;
 }
 
@@ -104,12 +106,14 @@ export default function WorkflowFormModal({
   onClose,
   onSubmit,
   workflow,
+  workflowDetails,
   initialStep = 1,
 }: WorkflowFormModalProps) {
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // Shared data
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -171,12 +175,45 @@ export default function WorkflowFormModal({
       OptionsService.getBankNames()
         .then(setBankNames)
         .catch(() => setBankNames([]));
+
+      // Determine if we're editing
+      const editing = !!workflow || !!workflowDetails;
+      setIsEditMode(editing);
+
+      // Reset form when creating new
+      if (!editing) {
+        setSelectedClient(null);
+        setAppointmentFormData({
+          client_id: 0,
+          CIN: "",
+          sujet: "",
+          date_rendez_vous: "",
+          Cree_par: "",
+          status: "confirmé",
+          Cabinet: "Biohacking",
+          soin_id: 0,
+        });
+        setInvoiceFormData(() => {
+          const empty = createEmptyFacture();
+          return {
+            ...empty,
+            statut: FactureStatut.BROUILLON,
+          };
+        });
+        setInvoiceItems([]);
+      }
+
+      // If editing, load existing data
+      if (editing && workflowDetails) {
+        loadExistingWorkflowData(workflowDetails);
+      }
+
       const step = (initialStep as Step) || 1;
       setCurrentStep(step);
       setErrors([]);
       setCreatedAppointmentId(null);
     }
-  }, [isOpen, initialStep]);
+  }, [isOpen, initialStep, workflowDetails, workflow]);
 
   // Load appointment types
   useEffect(() => {
@@ -211,6 +248,62 @@ export default function WorkflowFormModal({
       setSoins(data);
     } catch (error) {
       console.error("Error loading soins:", error);
+    }
+  };
+
+  const loadExistingWorkflowData = (workflowDetails: WorkflowWithDetails) => {
+    // Load client data
+    if (workflowDetails.client) {
+      setSelectedClient(workflowDetails.client);
+    }
+
+    // Load appointment data
+    if (workflowDetails.appointment) {
+      setAppointmentFormData((prev) => ({
+        ...prev,
+        client_id: workflowDetails.client?.id || 0,
+        CIN: workflowDetails.client_CIN,
+        sujet: workflowDetails.appointment?.sujet || "",
+        date_rendez_vous: workflowDetails.appointment?.date_rendez_vous || "",
+        Cree_par: workflowDetails.Cree_par,
+        status: workflowDetails.appointment?.status || "confirmé",
+        Cabinet: workflowDetails.appointment?.Cabinet || "Biohacking",
+        soin_id: workflowDetails.appointment?.soin_id || 0,
+      }));
+      setCreatedAppointmentId(workflowDetails.rendez_vous_id);
+    }
+
+    // Load invoice data
+    if (workflowDetails.invoice) {
+      setInvoiceFormData((prev) => ({
+        ...prev,
+        CIN: workflowDetails.client_CIN,
+        date:
+          workflowDetails.invoice?.date ||
+          new Date().toISOString().slice(0, 16),
+        statut: workflowDetails.invoice?.statut || FactureStatut.BROUILLON,
+        notes: workflowDetails.invoice?.notes || "",
+        Cree_par: workflowDetails.Cree_par,
+        date_paiement: workflowDetails.invoice?.date_paiement,
+        methode_paiement: workflowDetails.invoice?.methode_paiement,
+        cheque_numero: workflowDetails.invoice?.cheque_numero,
+        cheque_banque: workflowDetails.invoice?.cheque_banque,
+        cheque_date_tirage: workflowDetails.invoice?.cheque_date_tirage,
+        items: [],
+      }));
+
+      // Load invoice items
+      if (workflowDetails.invoice.items) {
+        setInvoiceItems(
+          workflowDetails.invoice.items.map((item) => ({
+            id_bien: item.id_bien,
+            type_bien: item.type_bien,
+            quantite: item.quantite,
+            prix_unitaire: item.prix_unitaire,
+            nom_bien: item.nom_bien,
+          })),
+        );
+      }
     }
   };
 
@@ -335,17 +428,36 @@ export default function WorkflowFormModal({
 
     try {
       setIsSubmitting(true);
-      const appointment = await AppointmentsService.create(updatedFormData);
 
-      await WorkflowService.create({
-        client_CIN: updatedFormData.CIN,
-        rendez_vous_id: appointment.id,
-        Cree_par: currentUser.CIN,
-      });
+      let appointmentId: number;
+
+      // If editing, update appointment; otherwise create new
+      if (isEditMode && createdAppointmentId) {
+        await AppointmentsService.update(createdAppointmentId, updatedFormData);
+        appointmentId = createdAppointmentId;
+      } else {
+        const appointment = await AppointmentsService.create(updatedFormData);
+        appointmentId = appointment.id;
+      }
+
+      // If editing, update workflow; otherwise create new
+      if (isEditMode && workflow?.id) {
+        await WorkflowService.update(workflow.id, {
+          client_CIN: updatedFormData.CIN,
+          rendez_vous_id: appointmentId,
+          Cree_par: currentUser.CIN,
+        });
+      } else {
+        await WorkflowService.create({
+          client_CIN: updatedFormData.CIN,
+          rendez_vous_id: appointmentId,
+          Cree_par: currentUser.CIN,
+        });
+      }
 
       toast({
         title: "Succès",
-        description: "Flux créé et enregistré",
+        description: isEditMode ? "Flux mis à jour" : "Flux créé et enregistré",
       });
 
       onSubmit();
@@ -372,8 +484,19 @@ export default function WorkflowFormModal({
 
     try {
       setIsSubmitting(true);
-      const appointment = await AppointmentsService.create(updatedFormData);
-      setCreatedAppointmentId(appointment.id);
+
+      let appointmentId: number;
+
+      // If editing, update appointment; otherwise create new
+      if (isEditMode && createdAppointmentId) {
+        await AppointmentsService.update(createdAppointmentId, updatedFormData);
+        appointmentId = createdAppointmentId;
+      } else {
+        const appointment = await AppointmentsService.create(updatedFormData);
+        appointmentId = appointment.id;
+        setCreatedAppointmentId(appointmentId);
+      }
+
       setErrors([]);
 
       // Auto-populate the selected service/soin in the invoice items
@@ -479,7 +602,19 @@ export default function WorkflowFormModal({
     try {
       setIsSubmitting(true);
 
-      const invoice = await InvoicesService.create(draftInvoiceData);
+      let invoiceId: number;
+
+      // If editing and invoice exists, update it; otherwise create new
+      if (isEditMode && workflow?.facture_id) {
+        const updatedInvoice = await InvoicesService.update(
+          workflow.facture_id,
+          draftInvoiceData,
+        );
+        invoiceId = updatedInvoice?.id || workflow.facture_id;
+      } else {
+        const invoice = await InvoicesService.create(draftInvoiceData);
+        invoiceId = invoice.id;
+      }
 
       let appointmentId = createdAppointmentId;
       if (!appointmentId) {
@@ -488,16 +623,28 @@ export default function WorkflowFormModal({
         appointmentId = appointment.id;
       }
 
-      await WorkflowService.create({
-        client_CIN: appointmentFormData.CIN,
-        rendez_vous_id: appointmentId,
-        facture_id: invoice.id,
-        Cree_par: currentUser.CIN,
-      });
+      // If editing, update workflow; otherwise create new
+      if (isEditMode && workflow?.id) {
+        await WorkflowService.update(workflow.id, {
+          client_CIN: appointmentFormData.CIN,
+          rendez_vous_id: appointmentId,
+          facture_id: invoiceId,
+          Cree_par: currentUser.CIN,
+        });
+      } else {
+        await WorkflowService.create({
+          client_CIN: appointmentFormData.CIN,
+          rendez_vous_id: appointmentId,
+          facture_id: invoiceId,
+          Cree_par: currentUser.CIN,
+        });
+      }
 
       toast({
         title: "Succès",
-        description: "Flux enregistré en brouillon",
+        description: isEditMode
+          ? "Flux mis à jour"
+          : "Flux enregistré en brouillon",
       });
 
       onSubmit();
@@ -553,11 +700,27 @@ export default function WorkflowFormModal({
     try {
       setIsSubmitting(true);
 
-      const invoice = await InvoicesService.create({
-        ...invoiceFormData,
-        Cree_par: currentUser.CIN,
-        items: invoiceItems,
-      });
+      let invoiceId: number;
+
+      // If editing and invoice exists, update it; otherwise create new
+      if (isEditMode && workflow?.facture_id) {
+        const updatedInvoice = await InvoicesService.update(
+          workflow.facture_id,
+          {
+            ...invoiceFormData,
+            Cree_par: currentUser.CIN,
+            items: invoiceItems,
+          },
+        );
+        invoiceId = updatedInvoice?.id || workflow.facture_id;
+      } else {
+        const invoice = await InvoicesService.create({
+          ...invoiceFormData,
+          Cree_par: currentUser.CIN,
+          items: invoiceItems,
+        });
+        invoiceId = invoice.id;
+      }
 
       let appointmentId = createdAppointmentId;
       if (!appointmentId) {
@@ -566,16 +729,28 @@ export default function WorkflowFormModal({
         appointmentId = appointment.id;
       }
 
-      await WorkflowService.create({
-        client_CIN: appointmentFormData.CIN,
-        rendez_vous_id: appointmentId,
-        facture_id: invoice.id,
-        Cree_par: currentUser.CIN,
-      });
+      // If editing, update workflow; otherwise create new
+      if (isEditMode && workflow?.id) {
+        await WorkflowService.update(workflow.id, {
+          client_CIN: appointmentFormData.CIN,
+          rendez_vous_id: appointmentId,
+          facture_id: invoiceId,
+          Cree_par: currentUser.CIN,
+        });
+      } else {
+        await WorkflowService.create({
+          client_CIN: appointmentFormData.CIN,
+          rendez_vous_id: appointmentId,
+          facture_id: invoiceId,
+          Cree_par: currentUser.CIN,
+        });
+      }
 
       toast({
         title: "Succès",
-        description: "Flux complété avec succès",
+        description: isEditMode
+          ? "Flux mis à jour avec succès"
+          : "Flux complété avec succès",
       });
 
       onSubmit();

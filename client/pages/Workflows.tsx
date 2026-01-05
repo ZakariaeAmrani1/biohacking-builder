@@ -183,7 +183,13 @@ const ColumnVisibilityDropdown = ({
 };
 
 // Tag list component for soins and products
-const TagList = ({ items, maxDisplay = 3 }: { items?: string[]; maxDisplay?: number }) => {
+const TagList = ({
+  items,
+  maxDisplay = 3,
+}: {
+  items?: string[];
+  maxDisplay?: number;
+}) => {
   if (!items || items.length === 0) {
     return <span className="text-gray-500">-</span>;
   }
@@ -211,8 +217,9 @@ export default function Workflows() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("tous");
   const [creatorFilter, setCreatorFilter] = useState<string>("tous");
-  const [visibleColumns, setVisibleColumns] =
-    useState<ColumnKey[]>(DEFAULT_VISIBLE_COLUMNS);
+  const [visibleColumns, setVisibleColumns] = useState<ColumnKey[]>(
+    DEFAULT_VISIBLE_COLUMNS,
+  );
 
   // Data state
   const [workflows, setWorkflows] = useState<WorkflowWithDetails[]>([]);
@@ -388,7 +395,9 @@ export default function Workflows() {
                 {visibleColumns.includes("appointmentStatus") && (
                   <TableHead>Statut Rendez-vous</TableHead>
                 )}
-                {visibleColumns.includes("soins") && <TableHead>Soins</TableHead>}
+                {visibleColumns.includes("soins") && (
+                  <TableHead>Soins</TableHead>
+                )}
                 {visibleColumns.includes("products") && (
                   <TableHead>Produits</TableHead>
                 )}
@@ -487,7 +496,8 @@ export default function Workflows() {
                       {workflow.invoiceStatus ? (
                         <Badge
                           className={
-                            getInvoiceStatusDisplay(workflow.invoiceStatus).color
+                            getInvoiceStatusDisplay(workflow.invoiceStatus)
+                              .color
                           }
                         >
                           {
@@ -521,7 +531,9 @@ export default function Workflows() {
                             Modifier
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={() => setDeleteConfirm(workflow as Workflow)}
+                            onClick={() =>
+                              setDeleteConfirm(workflow as Workflow)
+                            }
                             className="text-red-600"
                           >
                             <Trash2 className="w-4 h-4 mr-2" />

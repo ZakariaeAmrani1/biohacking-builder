@@ -1191,7 +1191,7 @@ export default function WorkflowFormModal({
         {invoiceItems.length > 0 && (
           <>
             <Separator />
-            <Card className="bg-blue-50 border-blue-200">
+            <Card className="bg-[hsl(165,20%,96%)] border-[hsl(165,88%,15%,0.2)]">
               <CardContent className="pt-6">
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
@@ -1209,7 +1209,7 @@ export default function WorkflowFormModal({
                   <Separator />
                   <div className="flex justify-between text-base">
                     <span className="font-semibold">Total TTC:</span>
-                    <span className="font-bold text-blue-600">
+                    <span className="font-bold text-[hsl(165,88%,15%)]">
                       {totals.prix_total.toFixed(2)} DH
                     </span>
                   </div>

@@ -71,6 +71,11 @@ export class WorkflowService {
   // Get all workflows with resolved details
   static async getAllWithDetails(): Promise<WorkflowWithDetails[]> {
     const workflows = await this.getAll();
+
+    // Ensure mock data arrays are populated before enriching
+    await AppointmentsService.getAll();
+    await InvoicesService.getAll();
+
     return Promise.all(workflows.map((w) => this.enrichWorkflow(w)));
   }
 

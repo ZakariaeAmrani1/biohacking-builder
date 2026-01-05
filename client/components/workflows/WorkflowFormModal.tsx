@@ -1243,12 +1243,12 @@ export default function WorkflowFormModal({
     const totals = calculateInvoiceTotals(invoiceItems);
     return (
       <div className="space-y-6 max-h-96 overflow-y-auto pr-4">
-        <Card className="border-purple-200 bg-purple-50">
+        <Card className="border-[hsl(165,88%,15%,0.3)] bg-[hsl(165,20%,96%)]">
           <CardContent className="pt-6">
             <div className="text-sm space-y-2">
               <div>
                 Patient:{" "}
-                <span className="font-semibold">
+                <span className="font-semibold text-[hsl(165,88%,15%)]">
                   {selectedClient?.prenom} {selectedClient?.nom}
                 </span>
               </div>

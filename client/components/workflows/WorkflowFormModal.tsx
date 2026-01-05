@@ -485,8 +485,22 @@ export default function WorkflowFormModal({
 
     try {
       setIsSubmitting(true);
-      const appointment = await AppointmentsService.create(updatedFormData);
-      setCreatedAppointmentId(appointment.id);
+
+      let appointmentId: number;
+
+      // If editing, update appointment; otherwise create new
+      if (isEditMode && createdAppointmentId) {
+        await AppointmentsService.update(
+          createdAppointmentId,
+          updatedFormData,
+        );
+        appointmentId = createdAppointmentId;
+      } else {
+        const appointment = await AppointmentsService.create(updatedFormData);
+        appointmentId = appointment.id;
+        setCreatedAppointmentId(appointmentId);
+      }
+
       setErrors([]);
 
       // Auto-populate the selected service/soin in the invoice items

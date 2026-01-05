@@ -175,12 +175,22 @@ export default function WorkflowFormModal({
       OptionsService.getBankNames()
         .then(setBankNames)
         .catch(() => setBankNames([]));
+
+      // Determine if we're editing
+      const editing = !!workflow || !!workflowDetails;
+      setIsEditMode(editing);
+
+      // If editing, load existing data
+      if (editing && workflowDetails) {
+        loadExistingWorkflowData(workflowDetails);
+      }
+
       const step = (initialStep as Step) || 1;
       setCurrentStep(step);
       setErrors([]);
       setCreatedAppointmentId(null);
     }
-  }, [isOpen, initialStep]);
+  }, [isOpen, initialStep, workflowDetails]);
 
   // Load appointment types
   useEffect(() => {

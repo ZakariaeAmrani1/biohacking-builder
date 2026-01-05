@@ -187,6 +187,7 @@ export default function Workflows() {
     setIsFormModalOpen(false);
     setEditingWorkflow(null);
     setSelectedWorkflow(null);
+    setEditingWorkflowDetails(null);
   };
 
   // Handle form submission

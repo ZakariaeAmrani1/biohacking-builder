@@ -180,7 +180,7 @@ export default function Workflows() {
   const renderTableView = () => (
     <div className="border rounded-lg overflow-hidden">
       {isLoading ? (
-        <TableLoader />
+        <TableLoader columns={8} rows={6} />
       ) : filteredWorkflows.length === 0 ? (
         <div className="p-8 text-center">
           <FileText className="w-12 h-12 mx-auto text-gray-400 mb-3" />

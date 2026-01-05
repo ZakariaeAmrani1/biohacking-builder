@@ -33,6 +33,11 @@ export interface WorkflowWithDetails extends Workflow {
   appointmentDate?: string;
   totalAmount?: number;
   paymentMethod?: string;
+  appointmentStatus?: string;
+  invoiceStatus?: string;
+  soins?: string[];
+  products?: string[];
+  paymentDate?: string;
 }
 
 // Mock data storage

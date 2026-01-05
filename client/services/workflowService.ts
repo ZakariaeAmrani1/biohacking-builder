@@ -109,6 +109,7 @@ export class WorkflowService {
       if (appointment) {
         result.appointment = appointment;
         result.appointmentDate = appointment.date_rendez_vous;
+        result.appointmentStatus = appointment.status;
       }
     } catch (error) {
       console.error("Error fetching appointment:", error);
@@ -122,6 +123,17 @@ export class WorkflowService {
           result.invoice = invoice;
           result.totalAmount = invoice.prix_total;
           result.paymentMethod = invoice.methode_paiement;
+          result.invoiceStatus = invoice.statut;
+          result.paymentDate = invoice.date_paiement;
+
+          // Extract soins and products from invoice items
+          result.soins = invoice.items
+            .filter((item) => item.type_bien === "soin")
+            .map((item) => item.nom_bien);
+
+          result.products = invoice.items
+            .filter((item) => item.type_bien === "produit")
+            .map((item) => item.nom_bien);
 
           // Update status: Terminé only if invoice is PAID
           result.status = invoice.statut === "Payée" ? "Terminé" : "En cours";

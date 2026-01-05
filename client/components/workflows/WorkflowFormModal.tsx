@@ -278,7 +278,9 @@ export default function WorkflowFormModal({
       setInvoiceFormData((prev) => ({
         ...prev,
         CIN: workflowDetails.client_CIN,
-        date: workflowDetails.invoice?.date || new Date().toISOString().slice(0, 16),
+        date:
+          workflowDetails.invoice?.date ||
+          new Date().toISOString().slice(0, 16),
         statut: workflowDetails.invoice?.statut || FactureStatut.BROUILLON,
         notes: workflowDetails.invoice?.notes || "",
         Cree_par: workflowDetails.Cree_par,
@@ -431,10 +433,7 @@ export default function WorkflowFormModal({
 
       // If editing, update appointment; otherwise create new
       if (isEditMode && createdAppointmentId) {
-        await AppointmentsService.update(
-          createdAppointmentId,
-          updatedFormData,
-        );
+        await AppointmentsService.update(createdAppointmentId, updatedFormData);
         appointmentId = createdAppointmentId;
       } else {
         const appointment = await AppointmentsService.create(updatedFormData);
@@ -490,10 +489,7 @@ export default function WorkflowFormModal({
 
       // If editing, update appointment; otherwise create new
       if (isEditMode && createdAppointmentId) {
-        await AppointmentsService.update(
-          createdAppointmentId,
-          updatedFormData,
-        );
+        await AppointmentsService.update(createdAppointmentId, updatedFormData);
         appointmentId = createdAppointmentId;
       } else {
         const appointment = await AppointmentsService.create(updatedFormData);
@@ -646,7 +642,9 @@ export default function WorkflowFormModal({
 
       toast({
         title: "Succès",
-        description: isEditMode ? "Flux mis à jour" : "Flux enregistré en brouillon",
+        description: isEditMode
+          ? "Flux mis à jour"
+          : "Flux enregistré en brouillon",
       });
 
       onSubmit();
@@ -750,7 +748,9 @@ export default function WorkflowFormModal({
 
       toast({
         title: "Succès",
-        description: isEditMode ? "Flux mis à jour avec succès" : "Flux complété avec succès",
+        description: isEditMode
+          ? "Flux mis à jour avec succès"
+          : "Flux complété avec succès",
       });
 
       onSubmit();

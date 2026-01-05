@@ -228,6 +228,60 @@ export default function WorkflowFormModal({
     }
   };
 
+  const loadExistingWorkflowData = (workflowDetails: WorkflowWithDetails) => {
+    // Load client data
+    if (workflowDetails.client) {
+      setSelectedClient(workflowDetails.client);
+    }
+
+    // Load appointment data
+    if (workflowDetails.appointment) {
+      setAppointmentFormData((prev) => ({
+        ...prev,
+        client_id: workflowDetails.client?.id || 0,
+        CIN: workflowDetails.client_CIN,
+        sujet: workflowDetails.appointment?.sujet || "",
+        date_rendez_vous: workflowDetails.appointment?.date_rendez_vous || "",
+        Cree_par: workflowDetails.Cree_par,
+        status: workflowDetails.appointment?.status || "confirmé",
+        Cabinet: workflowDetails.appointment?.Cabinet || "Biohacking",
+        soin_id: workflowDetails.appointment?.soin_id || 0,
+      }));
+      setCreatedAppointmentId(workflowDetails.rendez_vous_id);
+    }
+
+    // Load invoice data
+    if (workflowDetails.invoice) {
+      setInvoiceFormData((prev) => ({
+        ...prev,
+        CIN: workflowDetails.client_CIN,
+        date: workflowDetails.invoice?.date || new Date().toISOString().slice(0, 16),
+        statut: workflowDetails.invoice?.statut || FactureStatut.BROUILLON,
+        notes: workflowDetails.invoice?.notes || "",
+        Cree_par: workflowDetails.Cree_par,
+        date_paiement: workflowDetails.invoice?.date_paiement,
+        methode_paiement: workflowDetails.invoice?.methode_paiement,
+        cheque_numero: workflowDetails.invoice?.cheque_numero,
+        cheque_banque: workflowDetails.invoice?.cheque_banque,
+        cheque_date_tirage: workflowDetails.invoice?.cheque_date_tirage,
+        items: [],
+      }));
+
+      // Load invoice items
+      if (workflowDetails.invoice.items) {
+        setInvoiceItems(
+          workflowDetails.invoice.items.map((item) => ({
+            id_bien: item.id_bien,
+            type_bien: item.type_bien,
+            quantite: item.quantite,
+            prix_unitaire: item.prix_unitaire,
+            nom_bien: item.nom_bien,
+          })),
+        );
+      }
+    }
+  };
+
   const filteredClients = clients.filter((client) => {
     const searchTerm = clientSearchQuery.toLowerCase();
     return (

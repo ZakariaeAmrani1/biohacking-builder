@@ -700,11 +700,11 @@ export default function WorkflowFormModal({
           </Popover>
 
           {selectedClient && (
-            <Card className="border-2 border-blue-200 bg-blue-50">
+            <Card className="border-2 border-[hsl(165,88%,15%,0.3)] bg-[hsl(165,20%,96%)]">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
-                    <div className="font-semibold text-base">
+                    <div className="font-semibold text-base text-[hsl(165,88%,15%)]">
                       {selectedClient.prenom} {selectedClient.nom}
                     </div>
                     <div className="text-sm text-muted-foreground">

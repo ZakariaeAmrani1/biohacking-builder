@@ -1421,7 +1421,7 @@ export default function WorkflowFormModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[700px] max-h-[95vh] overflow-y-auto scrollbar-thin">
+      <DialogContent className="max-w-[950px] max-h-[90vh] overflow-y-auto scrollbar-thin">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CalendarDays className="h-5 w-5" />

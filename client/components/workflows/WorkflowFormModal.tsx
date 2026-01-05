@@ -375,6 +375,25 @@ export default function WorkflowFormModal({
       const appointment = await AppointmentsService.create(updatedFormData);
       setCreatedAppointmentId(appointment.id);
       setErrors([]);
+
+      // Auto-populate the selected service/soin in the invoice items
+      if (appointmentFormData.soin_id) {
+        const selectedSoin = soins.find(
+          (s) => s.id === appointmentFormData.soin_id,
+        );
+        if (selectedSoin) {
+          setInvoiceItems([
+            {
+              id_bien: selectedSoin.id,
+              type_bien: TypeBien.SOIN,
+              quantite: 1,
+              prix_unitaire: selectedSoin.prix,
+              nom_bien: selectedSoin.Nom,
+            },
+          ]);
+        }
+      }
+
       setCurrentStep(3);
     } catch (error: any) {
       setErrors([error.message || "Erreur lors de la création du rendez-vous"]);

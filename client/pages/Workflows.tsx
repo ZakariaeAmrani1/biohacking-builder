@@ -474,6 +474,7 @@ export default function Workflows() {
         onClose={handleCloseModal}
         onSubmit={handleFormSubmit}
         workflow={editingWorkflow || undefined}
+        workflowDetails={editingWorkflowDetails || undefined}
         initialStep={initialStep}
       />
 

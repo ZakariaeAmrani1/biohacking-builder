@@ -375,6 +375,25 @@ export default function WorkflowFormModal({
       const appointment = await AppointmentsService.create(updatedFormData);
       setCreatedAppointmentId(appointment.id);
       setErrors([]);
+
+      // Auto-populate the selected service/soin in the invoice items
+      if (appointmentFormData.soin_id) {
+        const selectedSoin = soins.find(
+          (s) => s.id === appointmentFormData.soin_id,
+        );
+        if (selectedSoin) {
+          setInvoiceItems([
+            {
+              id_bien: selectedSoin.id,
+              type_bien: TypeBien.SOIN,
+              quantite: 1,
+              prix_unitaire: selectedSoin.prix,
+              nom_bien: selectedSoin.Nom,
+            },
+          ]);
+        }
+      }
+
       setCurrentStep(3);
     } catch (error: any) {
       setErrors([error.message || "Erreur lors de la création du rendez-vous"]);
@@ -576,15 +595,15 @@ export default function WorkflowFormModal({
   };
 
   const renderStepIndicator = () => (
-    <div className="flex items-center justify-center gap-3 mb-6 px-6 py-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg border border-blue-100">
+    <div className="flex items-center justify-center gap-3 mb-6 px-6 py-4 bg-gradient-to-r from-[hsl(165,20%,96%)] to-[hsl(165,50%,96%)] rounded-lg border border-[hsl(165,88%,15%,0.2)]">
       {[1, 2, 3, 4].map((step) => (
         <div key={step} className="flex items-center gap-3">
           <div
             className={`flex h-10 w-10 items-center justify-center rounded-full font-semibold transition-all ${
               step < currentStep
-                ? "bg-green-500 text-white ring-2 ring-green-200"
+                ? "bg-[hsl(165,88%,15%)] text-white ring-2 ring-[hsl(165,88%,15%,0.2)]"
                 : step === currentStep
-                  ? "bg-blue-600 text-white ring-2 ring-blue-300 scale-110"
+                  ? "bg-[hsl(165,88%,15%)] text-white ring-2 ring-[hsl(165,88%,15%,0.3)] scale-110"
                   : "bg-gray-200 text-gray-600"
             }`}
           >
@@ -599,7 +618,7 @@ export default function WorkflowFormModal({
           {step < 4 && (
             <div
               className={`h-1 w-12 rounded-full transition-all ${
-                step < currentStep ? "bg-green-500" : "bg-gray-200"
+                step < currentStep ? "bg-[hsl(165,88%,15%)]" : "bg-gray-200"
               }`}
             />
           )}
@@ -700,11 +719,11 @@ export default function WorkflowFormModal({
           </Popover>
 
           {selectedClient && (
-            <Card className="border-2 border-blue-200 bg-blue-50">
+            <Card className="border-2 border-[hsl(165,88%,15%,0.3)] bg-[hsl(165,20%,96%)]">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
-                    <div className="font-semibold text-base">
+                    <div className="font-semibold text-base text-[hsl(165,88%,15%)]">
                       {selectedClient.prenom} {selectedClient.nom}
                     </div>
                     <div className="text-sm text-muted-foreground">
@@ -852,11 +871,11 @@ export default function WorkflowFormModal({
   const renderStep2 = () => (
     <form className="space-y-6">
       {selectedClient && (
-        <Card className="border-blue-200 bg-blue-50">
+        <Card className="border-[hsl(165,88%,15%,0.2)] bg-[hsl(165,20%,96%)]">
           <CardContent className="pt-6">
             <div className="text-sm">
               Patient:{" "}
-              <span className="font-semibold">
+              <span className="font-semibold text-[hsl(165,88%,15%)]">
                 {selectedClient.prenom} {selectedClient.nom}
               </span>
             </div>
@@ -982,11 +1001,11 @@ export default function WorkflowFormModal({
     const totals = calculateInvoiceTotals(invoiceItems);
     return (
       <div className="space-y-6 max-h-96 overflow-y-auto pr-4">
-        <Card className="border-green-200 bg-green-50">
+        <Card className="border-[hsl(165,88%,15%,0.3)] bg-[hsl(165,20%,96%)]">
           <CardContent className="pt-6">
             <div className="text-sm">
               Patient:{" "}
-              <span className="font-semibold">
+              <span className="font-semibold text-[hsl(165,88%,15%)]">
                 {selectedClient?.prenom} {selectedClient?.nom}
               </span>
             </div>
@@ -1191,7 +1210,7 @@ export default function WorkflowFormModal({
         {invoiceItems.length > 0 && (
           <>
             <Separator />
-            <Card className="bg-blue-50 border-blue-200">
+            <Card className="bg-[hsl(165,20%,96%)] border-[hsl(165,88%,15%,0.2)]">
               <CardContent className="pt-6">
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
@@ -1209,7 +1228,7 @@ export default function WorkflowFormModal({
                   <Separator />
                   <div className="flex justify-between text-base">
                     <span className="font-semibold">Total TTC:</span>
-                    <span className="font-bold text-blue-600">
+                    <span className="font-bold text-[hsl(165,88%,15%)]">
                       {totals.prix_total.toFixed(2)} DH
                     </span>
                   </div>
@@ -1243,12 +1262,12 @@ export default function WorkflowFormModal({
     const totals = calculateInvoiceTotals(invoiceItems);
     return (
       <div className="space-y-6 max-h-96 overflow-y-auto pr-4">
-        <Card className="border-purple-200 bg-purple-50">
+        <Card className="border-[hsl(165,88%,15%,0.3)] bg-[hsl(165,20%,96%)]">
           <CardContent className="pt-6">
             <div className="text-sm space-y-2">
               <div>
                 Patient:{" "}
-                <span className="font-semibold">
+                <span className="font-semibold text-[hsl(165,88%,15%)]">
                   {selectedClient?.prenom} {selectedClient?.nom}
                 </span>
               </div>
@@ -1421,7 +1440,7 @@ export default function WorkflowFormModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[700px] max-h-[95vh] overflow-y-auto scrollbar-thin">
+      <DialogContent className="max-w-[950px] max-h-[95vh] overflow-y-auto scrollbar-thin">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CalendarDays className="h-5 w-5" />

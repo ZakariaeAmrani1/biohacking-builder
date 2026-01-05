@@ -58,6 +58,7 @@ import {
   WorkflowService,
   Workflow,
   WorkflowFormData,
+  WorkflowWithDetails,
   validateWorkflowData,
 } from "@/services/workflowService";
 import {

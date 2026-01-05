@@ -117,6 +117,9 @@ export class WorkflowService {
           result.invoice = invoice;
           result.totalAmount = invoice.prix_total;
           result.paymentMethod = invoice.methode_paiement;
+
+          // Update status: Terminé only if invoice is PAID
+          result.status = invoice.statut === "Payée" ? "Terminé" : "En cours";
         }
       } catch (error) {
         console.error("Error fetching invoice:", error);

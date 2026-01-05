@@ -180,6 +180,29 @@ export default function WorkflowFormModal({
       const editing = !!workflow || !!workflowDetails;
       setIsEditMode(editing);
 
+      // Reset form when creating new
+      if (!editing) {
+        setSelectedClient(null);
+        setAppointmentFormData({
+          client_id: 0,
+          CIN: "",
+          sujet: "",
+          date_rendez_vous: "",
+          Cree_par: "",
+          status: "confirmé",
+          Cabinet: "Biohacking",
+          soin_id: 0,
+        });
+        setInvoiceFormData(() => {
+          const empty = createEmptyFacture();
+          return {
+            ...empty,
+            statut: FactureStatut.BROUILLON,
+          };
+        });
+        setInvoiceItems([]);
+      }
+
       // If editing, load existing data
       if (editing && workflowDetails) {
         loadExistingWorkflowData(workflowDetails);
@@ -190,7 +213,7 @@ export default function WorkflowFormModal({
       setErrors([]);
       setCreatedAppointmentId(null);
     }
-  }, [isOpen, initialStep, workflowDetails]);
+  }, [isOpen, initialStep, workflowDetails, workflow]);
 
   // Load appointment types
   useEffect(() => {

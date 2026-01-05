@@ -852,11 +852,11 @@ export default function WorkflowFormModal({
   const renderStep2 = () => (
     <form className="space-y-6">
       {selectedClient && (
-        <Card className="border-blue-200 bg-blue-50">
+        <Card className="border-[hsl(165,88%,15%,0.2)] bg-[hsl(165,20%,96%)]">
           <CardContent className="pt-6">
             <div className="text-sm">
               Patient:{" "}
-              <span className="font-semibold">
+              <span className="font-semibold text-[hsl(165,88%,15%)]">
                 {selectedClient.prenom} {selectedClient.nom}
               </span>
             </div>

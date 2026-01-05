@@ -106,12 +106,14 @@ export default function WorkflowFormModal({
   onClose,
   onSubmit,
   workflow,
+  workflowDetails,
   initialStep = 1,
 }: WorkflowFormModalProps) {
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // Shared data
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
